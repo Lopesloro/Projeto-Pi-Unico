@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seu PC Ideal - PC Builder AI</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>PC Builder <span class="ai-text">AI</span></h1>
+    <p>Sua configuração personalizada está pronta 🚀</p>
+</header>
+
+<main class="resultado-main">
+
+    <!-- ===================================================
+         SEÇÃO 1: RECOMENDAÇÃO DA IA
+    =================================================== -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">🤖</span>
+            <h2>Recomendação da IA</h2>
+        </div>
+        <div class="builder-container">
+            <div id="conteudo-ia">
+                <div class="spinner"></div>
+                <p style="text-align:center;color:#94a3b8;">Carregando sua configuração...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================
+         SEÇÃO 2: VERIFICAÇÃO DE COMPATIBILIDADE
+    =================================================== -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">🔧</span>
+            <h2>Verificação de Compatibilidade</h2>
+            <span class="section-badge" id="compat-badge">Verificando...</span>
+        </div>
+        <div class="builder-container" id="compat-container">
+            <div class="spinner"></div>
+        </div>
+    </section>
+
+    <!-- ===================================================
+         SEÇÃO 3: ANÁLISE DE GARGALO (BOTTLENECK)
+    =================================================== -->
+    <section class="resultado-section" id="bottleneck-section" style="display:none;">
+        <div class="section-header">
+            <span class="section-icon">📊</span>
+            <h2>Análise de Gargalo (Bottleneck)</h2>
+        </div>
+        <div class="builder-container" id="bottleneck-container"></div>
+    </section>
+
+    <!-- ===================================================
+         SEÇÃO 4: COMPARATIVO DE PREÇOS
+    =================================================== -->
+    <section class="resultado-section" id="precos-section" style="display:none;">
+        <div class="section-header">
+            <span class="section-icon">💰</span>
+            <h2>Comparativo de Preços</h2>
+        </div>
+        <div class="builder-container">
+            <p class="precos-info">Preços consultados em lojas confiáveis do Brasil e no AliExpress. Clique no link para ir direto à loja.</p>
+            <div class="precos-table-wrapper">
+                <table class="precos-table" id="precos-table">
+                    <thead>
+                        <tr>
+                            <th>Componente</th>
+                            <th>Peça</th>
+                            <th class="col-br">🇧🇷 Loja BR</th>
+                            <th class="col-ali">🛒 AliExpress</th>
+                            <th class="col-eco">💸 Economia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="precos-tbody"></tbody>
+                    <tfoot id="precos-tfoot"></tfoot>
+                </table>
+            </div>
+            <p class="precos-aviso">⚠️ Preços do AliExpress não incluem impostos de importação (até 20% + ICMS estadual). Calcule o custo real antes de comprar no exterior.</p>
+        </div>
+    </section>
+
+    <!-- ===================================================
+         SEÇÃO 5: ENVIAR POR E-MAIL
+    =================================================== -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">📧</span>
+            <h2>Receber por E-mail</h2>
+        </div>
+        <div class="builder-container">
+            <p class="email-desc">Envie esta configuração para o seu e-mail para consultar depois ou compartilhar com quem vai montar o PC.</p>
+            <div class="email-input-group">
+                <input type="email" id="input-email-destino" placeholder="seuemail@exemplo.com" />
+                <button class="btn btn-email" id="btn-enviar-email" onclick="handleEnviarEmail()">
+                    Enviar ✉️
+                </button>
+            </div>
+            <p class="email-status" id="email-status"></p>
+        </div>
+    </section>
+
+    <!-- Botões de navegação -->
+    <div class="resultado-nav">
+        <button class="btn btn-prev" onclick="window.location.href='builder.html'">🔄 Nova Consulta</button>
+        <button class="btn btn-submit" onclick="window.print()">🖨️ Salvar como PDF</button>
+        <button class="btn btn-prev" onclick="window.location.href='../index.html'">🚪 Sair</button>
+    </div>
+
+</main>
+
+<!-- Scripts: ordem importa -->
+<script src="../js/compatibility.js"></script>
+<script src="../js/email.js"></script>
+
+<script>
+// ============================================
+// LÓGICA DA PÁGINA DE RESULTADO
+// ============================================
+
+const respostaHTML = sessionStorage.getItem('pcBuilderResposta');
+const idsRaw       = sessionStorage.getItem('pcBuilderIds');
+const orcamento    = sessionStorage.getItem('pcBuilderOrcamento') || '';
+const objetivo     = sessionStorage.getItem('pcBuilderObjetivo')  || '';
+let   ids          = {};
+
+try { ids = idsRaw ? JSON.parse(idsRaw) : {}; } catch(e) { ids = {}; }
+
+// ----- Seção 1: Recomendação da IA -----
+const conteudoIa = document.getElementById('conteudo-ia');
+
+if (respostaHTML) {
+    // Fallback: converte markdown residual caso o modelo não tenha seguido o formato
+    let html = respostaHTML
+        .replace(/```html\s*/gi, '').replace(/```\s*/gi, '')
+        .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+        .replace(/## (.*?)(\n|$)/g,  '<h3>$1</h3>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    conteudoIa.innerHTML = html;
+} else {
+    conteudoIa.innerHTML = `
+        <h3 style="color:#ef4444;text-align:center;border:none;">⚠️ Nenhuma configuração encontrada</h3>
+        <p style="text-align:center;">Volte para o formulário e gere uma nova recomendação.</p>`;
+}
+
+// ----- Seções 2, 3 e 4: Compatibilidade + Bottleneck + Preços -----
+async function carregarDadosExtras() {
+    const compatContainer     = document.getElementById('compat-container');
+    const compatBadge         = document.getElementById('compat-badge');
+    const bottleneckSection   = document.getElementById('bottleneck-section');
+    const bottleneckContainer = document.getElementById('bottleneck-container');
+
+    // Sem IDs, mostra aviso e sai
+    if (!idsRaw || Object.values(ids).every(v => !v)) {
+        compatContainer.innerHTML = `<p class="compat-aviso">⚠️ Não foi possível identificar os componentes automaticamente nesta consulta. Gere uma nova recomendação para ativar a verificação.</p>`;
+        compatBadge.textContent = 'N/A';
+        compatBadge.className   = 'section-badge badge-aviso';
+        return;
+    }
+
+    try {
+        const resp    = await fetch('../data/components.json');
+        const estoque = await resp.json();
+
+        // --- Compatibilidade ---
+        const { resultados, bottleneck, cpu, gpu } = rodarTodasVerificacoes({
+            cpuId:    ids.cpu,
+            gpuId:    ids.gpu,
+            moboId:   ids.mobo,
+            ramId:    ids.ram,
+            fonteId:  ids.fonte
+        }, estoque);
+
+        if (resultados.length === 0) {
+            compatContainer.innerHTML = `<p class="compat-aviso">Componentes não localizados no catálogo para verificação.</p>`;
+            compatBadge.textContent = 'N/A';
+            compatBadge.className   = 'section-badge badge-aviso';
+        } else {
+            const todosOk = resultados.every(r => r.ok);
+            compatBadge.textContent = todosOk ? '✅ Aprovado' : '⚠️ Atenção';
+            compatBadge.className   = `section-badge ${todosOk ? 'badge-ok' : 'badge-erro'}`;
+
+            compatContainer.innerHTML = `<div class="compat-lista">${
+                resultados.map(r => `
+                    <div class="compat-item ${r.ok ? 'compat-ok' : 'compat-erro'}">
+                        <span class="compat-icone">${r.ok ? '✅' : '❌'}</span>
+                        <div>
+                            <strong>${r.label}</strong>
+                            <p>${r.msg}</p>
+                        </div>
+                    </div>`).join('')
+            }</div>`;
+        }
+
+        // --- Bottleneck ---
+        if (bottleneck) {
+            bottleneckSection.style.display = 'block';
+            const bw = Math.min(bottleneck.percentual, 100);
+            bottleneckContainer.innerHTML = `
+                <div class="bottleneck-card" style="border-color:${bottleneck.cor};">
+                    <div class="bottleneck-header">
+                        <span class="bottleneck-nivel" style="color:${bottleneck.cor};">${bottleneck.titulo}</span>
+                        <span class="bottleneck-percentual" style="color:${bottleneck.cor};">${bottleneck.percentual}% de gargalo</span>
+                    </div>
+                    <div class="bottleneck-barra-bg">
+                        <div class="bottleneck-barra" style="width:${bw}%;background:${bottleneck.cor};"></div>
+                    </div>
+                    <p class="bottleneck-desc">${bottleneck.descricao}</p>
+                    <div class="bottleneck-scores">
+                        <div class="score-item">
+                            <span class="score-label">🖥️ CPU Score</span>
+                            <span class="score-value">${bottleneck.cpuScore} / 10</span>
+                            <small>${cpu?.nome || ''}</small>
+                        </div>
+                        <div class="score-sep">VS</div>
+                        <div class="score-item">
+                            <span class="score-label">🎮 GPU Score</span>
+                            <span class="score-value">${bottleneck.gpuScore} / 10</span>
+                            <small>${gpu?.nome || ''}</small>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // --- Tabela de Preços ---
+        carregarTabelaPrecos(estoque);
+
+    } catch (err) {
+        compatContainer.innerHTML = `<p class="compat-aviso">Erro ao carregar verificações. Verifique o console (F12).</p>`;
+        console.error('Erro em carregarDadosExtras:', err);
+    }
+}
+
+function carregarTabelaPrecos(estoque) {
+    const secao = document.getElementById('precos-section');
+    const tbody = document.getElementById('precos-tbody');
+    const tfoot = document.getElementById('precos-tfoot');
+
+    const categorias = [
+        { key: 'cpu',     label: '🖥️ Processador',   arr: estoque.processadores },
+        { key: 'gpu',     label: '🎮 Placa de Vídeo', arr: estoque.placas_video  },
+        { key: 'mobo',    label: '🔌 Placa-Mãe',      arr: estoque.placas_mae    },
+        { key: 'ram',     label: '💾 Memória RAM',     arr: estoque.memorias      },
+        { key: 'fonte',   label: '⚡ Fonte',           arr: estoque.fontes        },
+        { key: 'storage', label: '💿 Armazenamento',   arr: estoque.armazenamento }
+    ];
+
+    let totalBR = 0, totalAli = 0, linhas = '', algum = false;
+
+    categorias.forEach(cat => {
+        const id   = ids[cat.key];
+        if (!id || id === 'null') return;
+        const item = cat.arr?.find(c => c.id === id);
+        if (!item) return;
+
+        algum = true;
+        const precoBR  = item.preco     || 0;
+        const precoAli = item.preco_ali || 0;
+        const economia = precoBR - precoAli;
+        const loja     = item.loja_br || 'Kabum';
+
+        totalBR  += precoBR;
+        totalAli += precoAli;
+
+        linhas += `
+            <tr>
+                <td><span class="cat-label">${cat.label}</span></td>
+                <td class="td-nome">${item.nome}</td>
+                <td class="col-br">
+                    <span class="preco-valor">${fmt(precoBR)}</span>
+                    <a href="${linkBR(loja, item.nome)}" target="_blank" rel="noopener noreferrer" class="loja-link">${loja} →</a>
+                </td>
+                <td class="col-ali">
+                    <span class="preco-valor preco-ali">${fmt(precoAli)}</span>
+                    <a href="${linkAli(item.nome)}" target="_blank" rel="noopener noreferrer" class="loja-link">AliExpress →</a>
+                </td>
+                <td class="col-eco"><span class="economia-valor">-${fmt(economia)}</span></td>
+            </tr>`;
+    });
+
+    if (!algum) return;
+
+    tbody.innerHTML = linhas;
+    tfoot.innerHTML = `
+        <tr class="tfoot-total">
+            <td colspan="2"><strong>TOTAL</strong></td>
+            <td class="col-br"><strong>${fmt(totalBR)}</strong></td>
+            <td class="col-ali"><strong>${fmt(totalAli)}</strong></td>
+            <td class="col-eco"><strong>-${fmt(totalBR - totalAli)}</strong></td>
+        </tr>`;
+    secao.style.display = 'block';
+}
+
+function fmt(v) {
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function linkBR(loja, nome) {
+    const q = encodeURIComponent(nome);
+    if (loja === 'Kabum')    return `https://www.kabum.com.br/busca/${q}`;
+    if (loja === 'Pichau')   return `https://www.pichau.com.br/search?q=${q}`;
+    if (loja === 'Terabyte') return `https://www.terabyteshop.com.br/busca?str=${q}`;
+    return `https://www.kabum.com.br/busca/${q}`;
+}
+function linkAli(nome) {
+    return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(nome)}`;
+}
+
+// ----- Seção 5: Envio de E-mail -----
+async function handleEnviarEmail() {
+    const input  = document.getElementById('input-email-destino');
+    const btn    = document.getElementById('btn-enviar-email');
+    const status = document.getElementById('email-status');
+    const email  = input.value.trim();
+
+    status.className   = 'email-status';
+    status.textContent = '';
+
+    try {
+        btn.disabled    = true;
+        btn.textContent = '⏳ Enviando...';
+
+        await enviarOrcamentoPorEmail(email, orcamento, objetivo, respostaHTML || '');
+
+        status.textContent = '✅ E-mail enviado! Verifique sua caixa de entrada.';
+        status.className   = 'email-status email-ok';
+        input.value        = '';
+    } catch (err) {
+        status.textContent = `❌ ${err.message || 'Erro ao enviar. Configure o EmailJS (veja js/email.js).'}`;
+        status.className   = 'email-status email-erro';
+        console.error('Erro ao enviar e-mail:', err);
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Enviar ✉️';
+    }
+}
+
+// Inicialização
+carregarDadosExtras();
+</script>
+
+</body>
+</html>

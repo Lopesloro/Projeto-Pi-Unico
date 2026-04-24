@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montar PC - PC Builder AI</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>PC Builder <span class="ai-text">AI</span></h1>
+    <p>A inteligência artificial que monta seu setup perfeito 🚀</p>
+</header>
+
+<main>
+<section class="builder-container">
+
+    <!-- Barra de progresso -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <p class="step-indicator">
+        Passo <span id="current-step">1</span> de 2
+    </p>
+
+    <!-- Formulário de montagem -->
+    <form id="pc-form">
+
+        <!-- STEP 1: Orçamento -->
+        <div class="form-step active" id="step-1">
+            <h2>💰 Defina seu orçamento</h2>
+
+            <div class="form-group">
+                <label for="orcamento">Quanto você quer investir? (R$)</label>
+                <input type="number" id="orcamento" placeholder="Ex: 5000" min="1500">
+                <span class="error-msg" id="error-orcamento">Orçamento mínimo: R$ 1.500</span>
+            </div>
+
+            <button type="button" class="btn btn-next" id="btn-next">
+                Avançar ➔
+            </button>
+        </div>
+
+        <!-- STEP 2: Objetivo -->
+        <div class="form-step" id="step-2">
+            <h2>🎯 Qual o objetivo do PC?</h2>
+
+            <div class="form-group">
+                <label for="objetivo">Descreva o uso que você pretende fazer:</label>
+                <textarea id="objetivo" rows="4" placeholder="Ex: Quero jogar jogos pesados como GTA V e editar vídeos no Premiere..."></textarea>
+                <span class="error-msg" id="error-objetivo">Preencha corretamente</span>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-prev" id="btn-prev">🠔 Voltar</button>
+                <button type="submit" class="btn btn-submit">Gerar com IA ✨</button>
+            </div>
+        </div>
+
+    </form>
+
+    <!-- Tela de Loading -->
+    <div id="loading-screen" class="hidden">
+        <div class="spinner"></div>
+        <h3 id="loading-text">🔍 Analisando seu objetivo...</h3>
+    </div>
+
+</section>
+</main>
+
+<!-- Scripts: AI + Main (nesta ordem!) -->
+<script src="../js/ai.js"></script>
+<script src="../js/main.js"></script>
+
+</body>
+</html>

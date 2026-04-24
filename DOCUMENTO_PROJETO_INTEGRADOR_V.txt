@@ -1,0 +1,1951 @@
+
+================================================================================
+PONTIFÍCIA UNIVERSIDADE CATÓLICA DE CAMPINAS
+CENTRO DE CIÊNCIAS EXATAS, AMBIENTAIS E DE TECNOLOGIAS
+CURSO DE ENGENHARIA DE SOFTWARE
+================================================================================
+
+
+
+
+                          PC BUILDER AI
+          Sistema Web Inteligente para Montagem de Computadores
+                   com Melhor Custo-Benefício
+
+
+
+
+                     Projeto Integrador V
+                   Engenharia de Software
+
+
+
+
+    Integrantes:
+    [RA: 000000-0] [Nome Completo do Integrante 1]
+    [RA: 000000-0] [Nome Completo do Integrante 2]
+    [RA: 000000-0] [Nome Completo do Integrante 3]
+    [RA: 000000-0] [Nome Completo do Integrante 4]
+    [RA: 000000-0] [Nome Completo do Integrante 5]
+
+
+
+
+    Orientadora: Prof.ª Sílvia C. de Matos Soares
+
+
+
+
+                        Campinas – SP
+                           1/2026
+
+================================================================================
+================================================================================
+
+
+
+
+RESUMO
+
+O presente documento descreve o desenvolvimento do PC Builder AI, uma aplicação
+Web do tipo Single Page Application (SPA) voltada para auxiliar usuários a
+montarem computadores personalizados com o melhor custo-benefício disponível no
+mercado brasileiro. O sistema foi construído com tecnologias de front-end — HTML5,
+CSS3 e JavaScript puro (Vanilla JS) — complementado por um servidor leve em
+Node.js com Express para autenticação de usuários e persistência via banco de
+dados SQLite. O núcleo inteligente da aplicação integra-se à API Google Gemini
+para gerar recomendações de configurações de hardware com base no orçamento e no
+objetivo declarados pelo usuário, enquanto um módulo de verificação baseado em
+regras lógicas em JavaScript garante a compatibilidade técnica entre os
+componentes (socket de processador versus placa-mãe, tipo de memória RAM e
+potência da fonte de alimentação). O catálogo de componentes é estruturado em
+arquivo JSON (components.json), contendo processadores, placas de vídeo, memórias
+e demais periféricos com seus respectivos preços e atributos técnicos. O
+desenvolvimento seguiu metodologia ágil SCRUM, organizado em sprints focadas na
+entrega incremental de funcionalidades. Os resultados demonstram que é possível
+construir uma ferramenta funcional e acessível para orientação de compra de
+hardware sem a necessidade de infraestruturas complexas, utilizando tecnologias
+Web amplamente disponíveis.
+
+Palavras-chave: montagem de computadores; custo-benefício; JavaScript; sistema
+especialista; compatibilidade de hardware; API de inteligência artificial;
+desenvolvimento front-end.
+
+
+================================================================================
+SUMÁRIO
+
+1  INTRODUÇÃO ...............................................................  1
+2  OBJETIVOS ................................................................  3
+   2.1  Objetivo Geral ......................................................  3
+   2.2  Objetivos Específicos ...............................................  3
+3  REPRESENTANTES DA COMUNIDADE EXTERNA .....................................  4
+4  FUNDAMENTAÇÃO TEÓRICA ....................................................  5
+   4.1  Sistemas Especialistas e Sistemas Baseados em Regras .................  5
+   4.2  Desenvolvimento Web Front-end com JavaScript ........................  6
+   4.3  APIs de Inteligência Artificial Generativa ..........................  7
+5  LEVANTAMENTO E ANÁLISE DE REQUISITOS .....................................  8
+   5.1  Requisitos Funcionais ...............................................  8
+   5.2  Requisitos Não Funcionais ...........................................  9
+6  BENCHMARKING .............................................................  10
+7  DEFINIÇÃO DAS PERSONAS ...................................................  12
+8  PROTÓTIPOS DAS INTERFACES ................................................  14
+9  MODELO DE DADOS ..........................................................  16
+10 ARQUITETURA E TECNOLOGIAS ................................................  19
+11 DESCRIÇÃO DA SOLUÇÃO DE IA ...............................................  22
+12 TESTES E VALIDAÇÃO DO SISTEMA ............................................  25
+13 GESTÃO DO PROJETO ........................................................  28
+14 RESULTADOS E DISCUSSÃO ...................................................  32
+15 CONCLUSÃO E TRABALHOS FUTUROS ............................................  34
+16 ACEITE FINAL DO PROJETO ..................................................  36
+   REFERÊNCIAS ..............................................................  37
+   APÊNDICE A – RESPOSTAS ÀS DIRETRIZES DE SISTEMAS ESPECIALISTAS ..........  39
+
+
+================================================================================
+1  INTRODUÇÃO
+================================================================================
+
+1.1 Contexto
+
+O mercado de hardware para computadores no Brasil atravessa um momento de
+crescente complexidade para o consumidor final. A diversidade de componentes
+disponíveis, somada à variação constante de preços causada por fatores como
+oscilação cambial, escassez global de semicondutores e múltiplos canais de venda
+— desde lojas físicas especializadas até marketplaces internacionais —, cria um
+cenário desafiador para quem deseja montar um computador com o melhor
+custo-benefício possível.
+
+De acordo com dados da Associação Brasileira da Indústria Elétrica e Eletrônica
+(ABINEE, 2023), o segmento de equipamentos de tecnologia da informação registrou
+crescimento de demanda superior a 18% nos dois anos subsequentes à pandemia de
+COVID-19, impulsionado pela consolidação do trabalho remoto e pelo crescimento do
+mercado gamer nacional. Entretanto, a complexidade técnica envolvida na seleção
+de componentes compatíveis permanece como barreira significativa para uma grande
+parcela dos consumidores.
+
+Questões como a compatibilidade entre o socket do processador e o slot da
+placa-mãe, a correspondência entre o tipo de memória RAM suportada e a memória
+adquirida (DDR4 versus DDR5), ou o cálculo correto da potência necessária para
+a fonte de alimentação são detalhes técnicos que, quando ignorados, resultam em
+compras incompatíveis, desperdício financeiro e frustração para o usuário.
+
+Nesse contexto, ferramentas de apoio à decisão de compra de hardware tornam-se
+instrumentos de grande valor social e econômico. Soluções como o PCPartPicker
+(disponível internacionalmente) já demonstraram a viabilidade e a aceitação de
+mercado para esse tipo de sistema, porém sem adaptação ao contexto brasileiro de
+preços, lojas e realidade de orçamento do consumidor local.
+
+1.2 Motivação — O Círculo Dourado (Simon Sinek)
+
+Utilizando o framework do Círculo Dourado proposto por Simon Sinek em sua obra
+"Comece pelo Porquê" (2009), o projeto pode ser compreendido em três camadas
+concêntricas:
+
+POR QUÊ: Acreditamos que qualquer pessoa, independentemente de seu conhecimento
+técnico prévio, merece ter acesso a uma ferramenta que a oriente a investir seu
+dinheiro com inteligência ao montar ou atualizar seu computador. O conhecimento
+técnico não deve ser um privilégio de especialistas.
+
+COMO: Desenvolvemos uma aplicação Web acessível, que combina uma base de dados
+de componentes estruturada em JSON, regras lógicas de compatibilidade escritas
+em JavaScript e integração com inteligência artificial generativa (Google Gemini)
+para traduzir o orçamento e os objetivos do usuário em uma recomendação de
+configuração personalizada e tecnicamente coerente.
+
+O QUÊ: O PC Builder AI é uma Single Page Application que, a partir do orçamento
+informado pelo usuário e de uma descrição textual do uso pretendido (jogos, edição
+de vídeo, trabalho acadêmico etc.), gera uma lista de componentes compatíveis e
+economicamente otimizada, exibida de forma clara e objetiva na tela.
+
+1.3 Justificativa Acadêmica
+
+Do ponto de vista da Engenharia de Software, o projeto representa a aplicação
+prática de conceitos fundamentais da disciplina: análise e levantamento de
+requisitos, modelagem de dados, arquitetura de sistemas, integração com APIs
+externas, teste e validação. A escolha por tecnologias Web de base — HTML5, CSS3
+e JavaScript — foi deliberada, alinhando-se ao perfil de um desenvolvedor
+front-end júnior e demonstrando que soluções funcionais e com componentes de
+inteligência artificial podem ser construídas sem dependência de frameworks
+pesados ou infraestruturas de alto custo.
+
+A adição de um servidor leve em Node.js com Express, responsável pela
+autenticação de usuários e persistência em banco de dados SQLite, demonstra a
+transição natural de uma aplicação puramente estática para um sistema com
+camadas de segurança e persistência de dados, mantendo a simplicidade arquitetural
+como princípio norteador.
+
+
+================================================================================
+2  OBJETIVOS
+================================================================================
+
+2.1 Objetivo Geral
+
+Desenvolver uma aplicação Web do tipo Single Page Application (SPA) que auxilie
+usuários a montarem configurações de computador personalizadas e tecnicamente
+compatíveis, dentro do orçamento informado, utilizando JavaScript puro no
+front-end, integração com a API Google Gemini para recomendações inteligentes e
+um módulo de verificação de compatibilidade baseado em regras lógicas.
+
+2.2 Objetivos Específicos
+
+a) Estruturar um catálogo de componentes de hardware (processadores, placas de
+   vídeo, memórias RAM, placas-mãe, fontes de alimentação e armazenamento) em
+   formato JSON, com atributos técnicos e preços referenciados ao mercado
+   brasileiro;
+
+b) Implementar um módulo de verificação de compatibilidade em JavaScript,
+   baseado em regras lógicas, capaz de validar a correspondência entre socket
+   de processador e placa-mãe, compatibilidade de tipo de memória RAM e
+   suficiência de potência da fonte de alimentação;
+
+c) Integrar a API Google Gemini (modelo gemini-2.0-flash-lite) ao front-end
+   para geração de recomendações de configuração personalizadas com base no
+   orçamento e no objetivo de uso declarados pelo usuário;
+
+d) Implementar sistema de autenticação de usuários (cadastro e login) por meio
+   de servidor Node.js com Express e banco de dados SQLite, permitindo
+   persistência de sessão via sessionStorage no navegador;
+
+e) Desenvolver uma interface de usuário responsiva, intuitiva e multi-etapas
+   (wizard) em HTML5 e CSS3, guiando o usuário desde o login até a exibição
+   do resultado da recomendação;
+
+f) Validar o sistema por meio de testes manuais de interface e testes unitários
+   das funções de compatibilidade, garantindo a confiabilidade das regras
+   implementadas;
+
+g) Documentar o processo de desenvolvimento, a arquitetura adotada e os
+   resultados obtidos, seguindo as normas da ABNT para trabalhos acadêmicos.
+
+
+================================================================================
+3  REPRESENTANTES DA COMUNIDADE EXTERNA
+================================================================================
+
+Para validar os requisitos do sistema junto a usuários representativos da
+comunidade externa, foram realizadas entrevistas e sessões de observação com
+três perfis distintos de potenciais usuários. Os nomes apresentados são
+fictícios, preservando a identidade dos participantes reais.
+
+──────────────────────────────────────────────────────────────────────────────
+3.1 Representante 1 — Dono de Assistência Técnica
+
+Nome (fictício): Rodrigo Ferreira
+Perfil: Proprietário de assistência técnica de informática há 12 anos, localizada
+na região central de Campinas-SP. Atende clientes que buscam orçamentos para
+montagem e atualização de computadores.
+
+Relato coletado: "Todo dia eu atendo pelo menos cinco pessoas que chegam sem
+saber nada. Elas pesquisaram um processador barato no mercado livre, uma placa-mãe
+diferente, e querem que eu monte tudo junto. Aí eu preciso explicar que o socket
+não bate, que a memória é de tipo diferente... É tempo meu e frustração delas.
+Uma ferramenta que já filtrasse isso antes delas comprarem ia economizar muito
+tempo e dinheiro de todo mundo."
+
+Contribuição para os requisitos: A fala de Rodrigo confirmou a necessidade
+crítica do módulo de verificação de compatibilidade (RF-04) e a importância de
+apresentar as incompatibilidades de forma clara, com linguagem acessível ao
+leigo.
+
+──────────────────────────────────────────────────────────────────────────────
+3.2 Representante 2 — Gamer Intermediário
+
+Nome (fictício): Lucas Henrique Martins
+Perfil: Estudante universitário de 21 anos, gamer casual/intermediário que
+deseja montar seu primeiro PC dedicado para jogos com orçamento de R$ 3.500,00.
+Possui conhecimento básico sobre hardware, sabe o que é processador e placa de
+vídeo, mas desconhece detalhes como TDP, socket e tipo de memória.
+
+Relato coletado: "Eu fico horas no YouTube assistindo review de placa de vídeo,
+daí entro no site da loja e me perco com tantas opções. Queria uma coisa mais
+simples: falo quanto tenho e o que quero fazer, e o sistema me diz o que comprar.
+Sem precisar virar técnico antes de ter o PC."
+
+Contribuição para os requisitos: O relato de Lucas reforçou a necessidade da
+interface em formato wizard com apenas dois campos iniciais (orçamento e objetivo),
+evitando sobrecarga de informação técnica. Validou também o uso de linguagem
+simples na exibição dos resultados (RF-01, RF-02, RNF-02).
+
+──────────────────────────────────────────────────────────────────────────────
+3.3 Representante 3 — Profissional Liberal
+
+Nome (fictício): Carla Duarte Mendes
+Perfil: Designer gráfica autônoma, 35 anos. Necessita de um computador para
+edição de imagens e vídeos em resolução 4K. Tem orçamento de R$ 6.000,00 e
+nenhum conhecimento técnico sobre hardware para computadores.
+
+Relato coletado: "Pedi ajuda para um primo técnico e ele me indicou uma
+configuração, mas depois descobri que estava desatualizada e paguei caro por
+peças medianas. Queria confiar em algo que me mostrasse o que eu realmente
+precisaria, com base no que eu faço no trabalho, e não ficar dependendo de
+indicação boca a boca."
+
+Contribuição para os requisitos: Carla evidenciou a importância do campo de
+"objetivo de uso" na interface, permitindo que a IA diferencie entre perfis de
+uso (games, edição, escritório). Sua experiência negativa com informações
+desatualizadas reforçou a necessidade de manutenção regular do arquivo
+components.json (RNF-05).
+
+
+================================================================================
+4  FUNDAMENTAÇÃO TEÓRICA
+================================================================================
+
+4.1 Sistemas Especialistas e Sistemas Baseados em Regras
+
+Sistemas Especialistas são um ramo da Inteligência Artificial simbólica que
+procura capturar e reproduzir o conhecimento de especialistas humanos em um
+domínio específico, por meio de uma base de conhecimento e um mecanismo de
+inferência. Segundo Russell e Norvig (2022, p. 293), "um sistema especialista é
+um programa que aplica capacidades de raciocínio para chegar a uma conclusão",
+funcionando de maneira análoga ao processo de tomada de decisão de um especialista
+humano.
+
+A forma mais clássica de representar o conhecimento em sistemas especialistas é
+por meio de regras de produção, que seguem o formato SE-ENTÃO (IF-THEN). Nesse
+modelo, cada regra representa um fragmento de conhecimento do especialista sobre
+o domínio. O mecanismo de inferência percorre essas regras, avaliando quais
+condições (premissas) são verdadeiras no contexto atual e disparando as ações
+(conclusões) correspondentes.
+
+No contexto do PC Builder AI, o módulo `compatibility.js` implementa um conjunto
+de funções que materializam esse conceito. A função `verificarCompatibilidadeSocket`,
+por exemplo, implementa a seguinte regra implícita:
+
+    SE (cpu.socket == mobo.socket)
+    ENTÃO (compatibilidade de processador e placa-mãe = VERDADEIRO)
+    CASO CONTRÁRIO (compatibilidade = FALSO)
+
+Da mesma forma, a função `verificarPotenciaFonte` implementa a regra:
+
+    SE (fonte.potencia_w >= tdpTotal * 1.2)
+    ENTÃO (fonte é suficiente = VERDADEIRO)
+    CASO CONTRÁRIO (fonte é insuficiente = FALSO)
+
+O fator 1.2 (margem de segurança de 20%) é conhecimento especialista
+explicitamente codificado, refletindo a recomendação técnica de que fontes de
+alimentação devem operar com margem de folga para garantir estabilidade e
+longevidade. Esse tipo de conhecimento não é derivado de dados, mas sim
+capturado diretamente da especialidade técnica do domínio.
+
+A base de conhecimento do sistema é composta pelo arquivo `components.json`, que
+contém os atributos técnicos de cada componente (socket, tipo de memória, TDP,
+potência). O mecanismo de inferência, por sua vez, é composto pelas funções
+JavaScript que consultam esses atributos e aplicam as regras de compatibilidade.
+
+Essa arquitetura, embora mais simples que sistemas especialistas clássicos
+baseados em motores de inferência dedicados (como o CLIPS ou o Drools), segue os
+mesmos princípios fundamentais: separação entre base de conhecimento (dados) e
+mecanismo de inferência (funções), e representação do conhecimento especialista
+por meio de regras explícitas.
+
+4.2 Desenvolvimento Web Front-end com JavaScript
+
+O desenvolvimento front-end moderno tem como pilares três tecnologias
+padronizadas pelo World Wide Web Consortium (W3C): HTML5 para estrutura semântica
+do conteúdo, CSS3 para estilização e responsividade, e JavaScript para
+comportamento dinâmico e interatividade.
+
+O JavaScript, padronizado como ECMAScript pela ECMA International (atualmente na
+especificação ES2023), evoluiu de uma linguagem de scripting simples para uma
+linguagem de programação de propósito geral. Sua capacidade de executar
+operações assíncronas por meio de Promises e da sintaxe async/await (introduzida
+no ES2017) tornou-o capaz de consumir APIs externas de forma não-bloqueante,
+sem necessidade de recarregamento da página.
+
+O conceito de Single Page Application (SPA) refere-se a aplicações Web que
+carregam uma única página HTML e atualizam dinamicamente seu conteúdo via
+JavaScript, sem transições de página completa. Essa arquitetura proporciona
+experiência de uso mais fluida e semelhante a aplicações desktop. No PC Builder AI,
+a navegação entre etapas do formulário (Step 1 → Step 2) e a transição para a
+tela de resultados são implementadas manipulando classes CSS e o estado do DOM
+via JavaScript puro, sem dependência de frameworks como React ou Vue.
+
+A especificação Fetch API, nativa dos navegadores modernos, permite ao JavaScript
+realizar requisições HTTP assíncronas. No sistema desenvolvido, a Fetch API é
+utilizada tanto para carregar o arquivo `components.json` localmente quanto para
+enviar requisições à API Google Gemini e ao servidor Node.js local de
+autenticação.
+
+4.3 APIs de Inteligência Artificial Generativa
+
+Os Modelos de Linguagem de Grande Escala (Large Language Models — LLMs) representam
+um avanço significativo na área de processamento de linguagem natural. O Google
+Gemini, especificamente o modelo `gemini-2.0-flash-lite` utilizado neste projeto,
+pertence a essa categoria. Diferentemente dos sistemas especialistas clássicos,
+que operam por regras explícitas e determinísticas, os LLMs aprendem padrões
+estatísticos a partir de enormes volumes de texto e são capazes de gerar respostas
+contextualizadas a partir de instruções em linguagem natural (prompts).
+
+A integração entre sistemas baseados em regras e LLMs, como adotada neste
+projeto, representa uma abordagem híbrida: as regras garantem correção lógica
+e determinística para verificações críticas (compatibilidade de socket, por
+exemplo), enquanto o LLM oferece flexibilidade para interpretar o objetivo do
+usuário em linguagem natural e gerar uma recomendação personalizada e contextual.
+
+Essa abordagem é conhecida na literatura como Neuro-Symbolic AI — a combinação
+de métodos simbólicos (regras, lógica formal) com métodos conexionistas (redes
+neurais, modelos de linguagem). Embora o projeto não implemente essa integração
+em nível profundo, a coexistência de `compatibility.js` (simbólico) com a chamada
+à API Gemini (conexionista) exemplifica conceitualmente essa tendência.
+
+O servidor Node.js com Express, embora simples, adiciona uma camada de backend
+responsável por autenticação de usuários com persistência em banco de dados SQLite.
+Essa arquitetura cumpre requisitos de segurança básicos, separando a lógica de
+autenticação do cliente (navegador) e evitando que credenciais sejam processadas
+exclusivamente no front-end.
+
+
+================================================================================
+5  LEVANTAMENTO E ANÁLISE DE REQUISITOS
+================================================================================
+
+5.1 Requisitos Funcionais
+
+Os requisitos funcionais descrevem as funcionalidades que o sistema deve prover
+ao usuário. A tabela a seguir apresenta os requisitos funcionais identificados
+durante o levantamento com os representantes da comunidade externa e a equipe
+de desenvolvimento.
+
+──────────────────────────────────────────────────────────────────────────────
+Tabela 1 — Requisitos Funcionais do PC Builder AI
+
+CÓDIGO │ DESCRIÇÃO                                          │ PRIORIDADE
+───────┼────────────────────────────────────────────────────┼───────────
+RF-01  │ O sistema deve permitir que o usuário informe seu  │ Alta
+       │ orçamento máximo em reais (mínimo R$ 1.500,00) e   │
+       │ o objetivo de uso do computador em linguagem        │
+       │ natural.                                            │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-02  │ O sistema deve consultar a API Google Gemini com   │ Alta
+       │ o orçamento, o objetivo e o catálogo de             │
+       │ componentes (components.json), recebendo em retorno │
+       │ uma recomendação de configuração em formato HTML.   │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-03  │ O sistema deve exibir o resultado da recomendação  │ Alta
+       │ na página resultado.html, com a lista de           │
+       │ componentes sugeridos e o valor total estimado.    │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-04  │ O sistema deve verificar a compatibilidade entre   │ Alta
+       │ processador e placa-mãe (socket), tipo de memória  │
+       │ RAM e potência da fonte de alimentação por meio    │
+       │ das funções do módulo compatibility.js.             │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-05  │ O sistema deve permitir que o usuário realize      │ Alta
+       │ cadastro (criação de conta) informando e-mail e    │
+       │ senha, com validação de formato de e-mail e        │
+       │ comprimento mínimo de senha (4 caracteres).        │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-06  │ O sistema deve permitir que o usuário realize      │ Alta
+       │ login com e-mail e senha previamente cadastrados,  │
+       │ redirecionando-o para a página do builder em caso  │
+       │ de autenticação bem-sucedida.                      │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-07  │ O sistema deve armazenar os dados do usuário       │ Média
+       │ autenticado na sessionStorage do navegador, para   │
+       │ uso durante a sessão ativa.                        │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-08  │ O sistema deve exibir mensagens de erro claras     │ Média
+       │ quando: o orçamento for inferior ao mínimo         │
+       │ permitido; o objetivo for muito curto (< 10        │
+       │ caracteres); a API Gemini retornar erro; ou o      │
+       │ servidor de autenticação estiver indisponível.     │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-09  │ O sistema deve exibir uma barra de progresso       │ Baixa
+       │ durante o preenchimento do formulário, indicando   │
+       │ em qual etapa o usuário se encontra (passo 1 de 2  │
+       │ ou passo 2 de 2).                                  │
+───────┼────────────────────────────────────────────────────┼───────────
+RF-10  │ O catálogo de componentes deve conter ao menos:   │ Alta
+       │ processadores (com atributos id, nome, marca,      │
+       │ socket, tdp_w, video_integrado, preco), placas de  │
+       │ vídeo, memórias RAM, placas-mãe, fontes e         │
+       │ armazenamento.                                     │
+──────────────────────────────────────────────────────────────────────────────
+
+5.2 Requisitos Não Funcionais
+
+Os requisitos não funcionais definem as qualidades e restrições do sistema,
+relacionadas ao seu comportamento, desempenho, segurança e manutenibilidade.
+
+──────────────────────────────────────────────────────────────────────────────
+Tabela 2 — Requisitos Não Funcionais do PC Builder AI
+
+CÓDIGO │ DESCRIÇÃO                                          │ CATEGORIA
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-01 │ O sistema deve funcionar corretamente nos         │ Portabilidade
+       │ navegadores modernos: Google Chrome (v.120+),     │
+       │ Mozilla Firefox (v.120+) e Microsoft Edge (v.120+)│
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-02 │ A interface deve ser responsiva, adaptando-se a   │ Usabilidade
+       │ telas de 320px (mobile) a 1920px (desktop).       │
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-03 │ O tempo de resposta da API Gemini não deve exceder│ Desempenho
+       │ 15 segundos em condições normais de rede. Durante │
+       │ o carregamento, uma animação de espera deve ser   │
+       │ exibida ao usuário.                                │
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-04 │ O módulo compatibility.js não deve depender de    │ Manutenibilidade
+       │ bibliotecas externas, devendo funcionar com        │
+       │ JavaScript puro.                                   │
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-05 │ O arquivo components.json deve ser atualizado     │ Manutenibilidade
+       │ manualmente a cada 30 dias para refletir           │
+       │ variações de preço do mercado.                    │
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-06 │ As senhas dos usuários devem ser armazenadas no   │ Segurança
+       │ banco SQLite. (Observação: hash de senhas deve    │
+       │ ser implementado em versão futura com bcrypt.)    │
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-07 │ O sistema deve exibir uma mensagem de orientação  │ Usabilidade
+       │ ao usuário quando o servidor Node.js não estiver  │
+       │ em execução, instruindo sobre o comando npm start.│
+───────┼────────────────────────────────────────────────────┼───────────
+RNF-08 │ O código JavaScript deve ser organizado em        │ Manutenibilidade
+       │ módulos separados por responsabilidade: ai.js,   │
+       │ compatibility.js, login.js e main.js.             │
+──────────────────────────────────────────────────────────────────────────────
+
+
+================================================================================
+6  BENCHMARKING
+================================================================================
+
+O benchmarking consiste na análise comparativa entre a solução desenvolvida e
+outras ferramentas disponíveis no mercado com propósito similar, com o objetivo
+de identificar diferenciais competitivos e oportunidades de melhoria.
+
+Foram analisadas as seguintes ferramentas concorrentes:
+
+a) PCPartPicker (pcpartpicker.com): Plataforma americana líder no segmento de
+   montagem assistida de computadores. Oferece verificação de compatibilidade,
+   comparação de preços entre lojas americanas e listas de configurações salvas
+   em nuvem.
+
+b) TechPowerUp (techpowerup.com/gpu-specs): Portal técnico com especificações
+   detalhadas de componentes de hardware, sem funcionalidade de montagem guiada.
+
+c) Kabum Monta Fácil (kabum.com.br): Funcionalidade do marketplace brasileiro
+   Kabum que sugere configurações, porém limitada ao catálogo da própria loja.
+
+d) Pichau Configurator (pichau.com.br): Configurador de PC da loja Pichau,
+   restrito ao estoque e preços da loja.
+
+e) PC Builder AI (este projeto): Solução desenvolvida neste projeto integrador.
+
+──────────────────────────────────────────────────────────────────────────────
+Tabela 3 — Comparativo entre soluções de montagem assistida de computadores
+
+CRITÉRIO DE            │ PCPartPicker │ Kabum     │ Pichau    │ PC Builder
+AVALIAÇÃO              │              │ Monta Fácil│ Configurator│ AI (este)
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Disponível em          │ Não          │ Sim        │ Sim       │ Sim
+português (BR)         │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Preços em reais (R$)   │ Não          │ Sim        │ Sim       │ Sim*
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Verificação de         │ Sim          │ Parcial    │ Parcial   │ Sim
+compatibilidade        │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Independente de        │ Sim          │ Não        │ Não       │ Sim
+loja específica        │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Recomendação por       │ Não          │ Não        │ Não       │ Sim
+objetivo em linguagem  │              │            │           │
+natural                │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Integração com IA      │ Não          │ Não        │ Não       │ Sim
+generativa (LLM)       │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Uso sem cadastro       │ Sim          │ Sim        │ Sim       │ Não**
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Código aberto          │ Não          │ Não        │ Não       │ Sim
+(open-source)          │              │            │           │
+───────────────────────┼──────────────┼───────────┼───────────┼───────────
+Funciona sem acesso    │ Não          │ Não        │ Não       │ Parcial***
+à internet             │              │            │           │
+──────────────────────────────────────────────────────────────────────────────
+
+* Preços atualizados manualmente no arquivo components.json.
+** O cadastro é exigido para acesso ao builder, funcionalidade que pode ser
+   tornada opcional em versões futuras.
+*** O módulo de compatibilidade funciona offline; a recomendação via Gemini
+    exige conexão com a internet.
+
+6.1 Análise dos Resultados do Benchmarking
+
+A análise da tabela revela que o PC Builder AI apresenta diferenciais únicos
+no segmento: é o único sistema, entre os analisados, que combina recomendação
+por objetivo em linguagem natural com integração de inteligência artificial
+generativa. Enquanto as soluções das lojas brasileiras (Kabum e Pichau) oferecem
+conveniência no contexto do próprio marketplace, são limitadas ao catálogo da
+respectiva loja e não oferecem personalização por objetivo de uso.
+
+O PCPartPicker, embora tecnicamente superior em abrangência de catálogo, opera
+em dólares americanos e não possui versão adaptada ao mercado brasileiro.
+
+A maior limitação identificada no PC Builder AI em relação ao PCPartPicker é a
+necessidade de atualização manual dos preços no arquivo JSON, em contraste com
+a atualização automática por scraping adotada pelo concorrente americano. Essa
+limitação é reconhecida e endereçada nos trabalhos futuros (Seção 15).
+
+
+================================================================================
+7  DEFINIÇÃO DAS PERSONAS
+================================================================================
+
+Personas são representações semifictícias do usuário ideal do sistema, criadas
+com base em pesquisa com usuários reais. Neste projeto, três personas foram
+definidas a partir das entrevistas com os representantes da comunidade externa
+(Seção 3) e de análise do público-alvo potencial.
+
+──────────────────────────────────────────────────────────────────────────────
+PERSONA 1 — O Iniciante Determinado
+
+Nome: Lucas Henrique, 21 anos
+Ocupação: Estudante universitário (Administração)
+Localidade: Campinas, SP
+Nível técnico: Baixo a médio (sabe o que é placa de vídeo, nunca montou um PC)
+
+Contexto:
+Lucas quer montar seu primeiro PC para jogar títulos como CS2 e Valorant. Tem
+R$ 3.500,00 economizados e duas semanas de pesquisa no YouTube, mas ainda não
+se sente seguro para comprar sem orientação de alguém de confiança. Teme
+comprar peças incompatíveis e perder dinheiro.
+
+Objetivos no sistema:
+- Informar o orçamento e dizer "quero jogar CS2 e Valorant em 1080p" e receber
+  uma lista confiável de componentes.
+- Entender por que aquelas peças foram escolhidas.
+- Saber o valor total antes de comprar.
+
+Frustrações:
+- Sites com linguagem muito técnica.
+- Sugestões que ultrapassam o orçamento.
+- Não saber se as peças são compatíveis entre si.
+
+Frase que representa a persona:
+"Me fala o que comprar. Eu confio."
+
+──────────────────────────────────────────────────────────────────────────────
+PERSONA 2 — A Profissional Produtiva
+
+Nome: Carla Duarte, 35 anos
+Ocupação: Designer gráfica autônoma
+Localidade: Vinhedo, SP
+Nível técnico: Muito baixo (usa computadores profissionalmente, mas não sabe nada
+de hardware)
+
+Contexto:
+Carla edita imagens no Photoshop e faz montagens de vídeo curtos para clientes.
+Seu notebook está travando e ela quer investir em um desktop potente. Tem
+R$ 6.000,00 disponíveis. Não tem tempo para pesquisa técnica e precisa de uma
+recomendação rápida e confiável.
+
+Objetivos no sistema:
+- Descrever seu trabalho ("edição de imagens 4K e vídeos curtos") e receber
+  uma configuração adequada.
+- Não precisar entender os termos técnicos para tomar a decisão.
+- Ter clareza sobre o valor total da configuração.
+
+Frustrações:
+- Depender de terceiros para tomar decisões de compra.
+- Receber indicações enviesadas por comissionamento de loja.
+- Comprar algo e descobrir depois que não era o ideal para seu uso.
+
+Frase que representa a persona:
+"Não entendo de peça. Entendo do meu trabalho. O sistema que entenda de peça."
+
+──────────────────────────────────────────────────────────────────────────────
+PERSONA 3 — O Técnico Curioso
+
+Nome: Rodrigo Ferreira, 38 anos
+Ocupação: Proprietário de assistência técnica
+Localidade: Campinas, SP
+Nível técnico: Alto (monta PCs há mais de 10 anos)
+
+Contexto:
+Rodrigo conhece hardware profundamente, mas usa a ferramenta de forma diferente:
+quer agilizar o processo de sugestão de configurações para seus clientes. Em vez
+de montar manualmente uma lista, ele quer uma ferramenta que faça isso em
+segundos, gerando uma sugestão inicial que ele depois refina com seu
+conhecimento técnico.
+
+Objetivos no sistema:
+- Gerar rapidamente uma configuração base para um orçamento e uso específicos.
+- Verificar se a configuração sugerida está tecnicamente correta.
+- Usar como ferramenta de apoio ao atendimento, não como substituto do seu
+  conhecimento.
+
+Frustrações:
+- Ferramentas que sugerem peças fora do mercado brasileiro.
+- Preços desatualizados que geram expectativas erradas no cliente.
+- Sistemas que não permitem ajuste manual da sugestão.
+
+Frase que representa a persona:
+"É uma boa base. Eu ajusto o que precisar."
+
+
+================================================================================
+8  PROTÓTIPOS DAS INTERFACES
+================================================================================
+
+Os protótipos das interfaces foram desenvolvidos em duas etapas: wireframes de
+baixa fidelidade (sketches em papel na fase de concepção) e protótipos de alta
+fidelidade implementados diretamente em HTML5 e CSS3 (abordagem code-as-prototype,
+prática comum em equipes pequenas de front-end). A seguir, descreve-se cada tela
+principal do sistema.
+
+──────────────────────────────────────────────────────────────────────────────
+8.1 Tela 1 — Login / Cadastro (index.html)
+
+Descrição visual:
+Tela centralizada com fundo escuro (tonalidade grafite/azul escuro, consistente
+com estética gamer/tech). Contém um card central com:
+- Logotipo ou nome "PC Builder AI" em destaque no topo.
+- Subtítulo descritivo ("Entre para montar o setup dos seus sonhos").
+- Campos de formulário: E-mail e Senha.
+- Botão primário "Entrar" (ou "Cadastrar" no modo de criação de conta).
+- Links secundários: "Criar conta" (alterna para modo cadastro) e "Esqueceu
+  a senha?" (exibe alerta informativo).
+
+Fluxo de navegação:
+- Login bem-sucedido → redireciona para pages/builder.html.
+- Cadastro bem-sucedido → recarrega a tela em modo login.
+- Credenciais inválidas → exibe alerta com mensagem de erro.
+
+Decisões de design:
+- Fundo escuro foi escolhido para reduzir fadiga visual em uso noturno, comum
+  no perfil gamer.
+- O formulário alterna entre modo Login e Cadastro sem recarregar a página,
+  aproveitando a dinâmica SPA do JavaScript.
+
+──────────────────────────────────────────────────────────────────────────────
+8.2 Tela 2 — Builder (pages/builder.html) — Etapa 1 de 2
+
+Descrição visual:
+Tela com cabeçalho identificando o sistema. Exibe uma barra de progresso
+indicando "Passo 1 de 2". Contém:
+- Campo numérico "Qual é o seu orçamento? (R$)" com placeholder "Ex: 3500".
+- Mensagem de validação em vermelho abaixo do campo, exibida quando o valor
+  é inferior a R$ 1.500,00.
+- Botão "Próximo →" para avançar para a etapa 2.
+
+Fluxo de navegação:
+- Orçamento válido + clique em "Próximo" → avança para Etapa 2.
+- Orçamento inválido → exibe mensagem de erro; permanece na Etapa 1.
+
+──────────────────────────────────────────────────────────────────────────────
+8.3 Tela 3 — Builder (pages/builder.html) — Etapa 2 de 2
+
+Descrição visual:
+Barra de progresso atualizada para "Passo 2 de 2" (100%). Contém:
+- Área de texto "Para que você vai usar o PC?" com placeholder descritivo
+  ("Ex: quero jogar Fortnite e editar vídeos curtos para o YouTube").
+- Botão "← Voltar" (retorna à Etapa 1).
+- Botão "Montar meu PC ✓" (submete o formulário e chama a API).
+
+Estado de carregamento:
+Durante a consulta à API Gemini, o botão de submissão é desabilitado e exibe
+indicador de carregamento (spinner ou texto "Aguarde..."), prevenindo múltiplos
+envios simultâneos.
+
+──────────────────────────────────────────────────────────────────────────────
+8.4 Tela 4 — Resultado (pages/resultado.html)
+
+Descrição visual:
+Tela que exibe o resultado da recomendação gerada pela IA. Contém:
+- Título "Sua Configuração Recomendada" ou similar.
+- Conteúdo HTML gerado pelo modelo Gemini: lista de componentes com justificativas
+  de escolha, organizados em elementos <h3>, <ul>, <li> e <p>.
+- Total estimado da configuração em destaque.
+- Botão "← Fazer nova consulta" para retornar ao builder.
+
+Estado de erro:
+Caso a API retorne erro, a área de resultado exibe uma caixa de alerta em
+vermelho com a mensagem de erro e instrução para nova tentativa.
+
+──────────────────────────────────────────────────────────────────────────────
+8.5 Notas sobre Responsividade
+
+Todas as telas foram desenvolvidas com layout flexível utilizando Flexbox e
+unidades relativas (rem, %, vh). A largura máxima do card central é limitada
+a aproximadamente 480px em telas largas, centralizando o conteúdo. Em telas
+menores que 480px (smartphones), o card ocupa 90% da largura da tela com
+padding lateral adequado para leitura confortável.
+
+
+================================================================================
+9  MODELO DE DADOS
+================================================================================
+
+O PC Builder AI opera com dois tipos de persistência de dados: dados estruturais
+de componentes (armazenados em arquivo JSON estático) e dados de usuários
+(armazenados em banco de dados SQLite via servidor Node.js). A seguir, descreve-se
+a estrutura de cada um.
+
+──────────────────────────────────────────────────────────────────────────────
+9.1 Arquivo components.json
+
+Localização: /data/components.json
+Propósito: Catálogo completo de componentes de hardware disponíveis para
+recomendação. Este arquivo constitui a base de conhecimento factual do sistema,
+consultado tanto pelo módulo de compatibilidade quanto enviado integralmente
+para a API Gemini como contexto de cada consulta.
+
+Estrutura de alto nível:
+
+{
+  "processadores": [ ... ],
+  "placas_video": [ ... ],
+  "memorias_ram": [ ... ],
+  "placas_mae": [ ... ],
+  "fontes": [ ... ],
+  "armazenamento": [ ... ]
+}
+
+Estrutura de um objeto PROCESSADOR:
+
+{
+  "id": "cpu_i3_12100f",
+  "nome": "Intel Core i3-12100F",
+  "marca": "Intel",
+  "socket": "LGA1700",
+  "tdp_w": 60,
+  "video_integrado": false,
+  "preco": 700.00
+}
+
+Atributos:
+- id (string): Identificador único do componente. Formato: categoria_modelo.
+- nome (string): Nome comercial completo do componente.
+- marca (string): Fabricante do componente.
+- socket (string): Tipo de socket físico (LGA1700, LGA1200, AM4, AM5 etc.).
+  Atributo crítico para verificação de compatibilidade.
+- tdp_w (number): Thermal Design Power em watts. Utilizado no cálculo de
+  potência mínima da fonte de alimentação.
+- video_integrado (boolean): Indica se o processador possui GPU integrada,
+  relevante quando o usuário não inclui placa de vídeo dedicada.
+- preco (number): Preço de referência em reais (R$). Atualizado manualmente.
+
+Estrutura de um objeto PLACA-MÃE:
+
+{
+  "id": "mobo_b760m_aorus",
+  "nome": "Gigabyte B760M AORUS Elite",
+  "marca": "Gigabyte",
+  "socket": "LGA1700",
+  "tipo_memoria": "DDR5",
+  "slots_m2": 2,
+  "preco": 950.00
+}
+
+Atributos adicionais relevantes:
+- tipo_memoria (string): Tipo de RAM suportado (DDR4 ou DDR5). Atributo crítico
+  para verificação de compatibilidade com os módulos de memória.
+- slots_m2 (number): Quantidade de slots M.2 disponíveis para SSD.
+
+Estrutura de um objeto MEMÓRIA RAM:
+
+{
+  "id": "ram_8gb_ddr4_3200",
+  "nome": "Memória RAM 8GB DDR4 3200MHz",
+  "marca": "Kingston",
+  "tipo": "DDR4",
+  "capacidade_gb": 8,
+  "frequencia_mhz": 3200,
+  "preco": 180.00
+}
+
+Atributo crítico: tipo (string) — deve corresponder ao tipo_memoria da placa-mãe
+para que a verificação de compatibilidade retorne verdadeiro.
+
+Estrutura de um objeto FONTE DE ALIMENTAÇÃO:
+
+{
+  "id": "fonte_550w_80plus",
+  "nome": "Fonte 550W 80 Plus Bronze",
+  "marca": "Corsair",
+  "potencia_w": 550,
+  "certificacao": "80 Plus Bronze",
+  "preco": 380.00
+}
+
+Atributo crítico: potencia_w (number) — deve ser maior ou igual a
+(tdp_cpu + tdp_gpu) * 1.2 para que a verificação de potência retorne verdadeiro.
+
+──────────────────────────────────────────────────────────────────────────────
+9.2 Banco de Dados SQLite (usuarios.db)
+
+Localização: /usuarios.db
+Propósito: Persistência de contas de usuário para autenticação. Gerenciado
+exclusivamente pelo servidor Node.js (server.js) via biblioteca better-sqlite3.
+
+Tabela: Usuarios
+
+Coluna         │ Tipo    │ Restrições            │ Descrição
+───────────────┼─────────┼───────────────────────┼──────────────────────────
+Id             │ INTEGER │ PRIMARY KEY AUTOINCREMENT│ Identificador único
+Email          │ TEXT    │ NOT NULL, UNIQUE        │ E-mail do usuário
+Senha          │ TEXT    │ NOT NULL                │ Senha em texto simples*
+DataCriacao    │ TEXT    │ DEFAULT datetime('now') │ Timestamp de criação
+
+* Nota: O armazenamento de senhas em texto simples é uma limitação reconhecida
+  da versão atual (v1.0). A implementação de hash com bcrypt está prevista como
+  trabalho futuro prioritário (Seção 15).
+
+──────────────────────────────────────────────────────────────────────────────
+9.3 sessionStorage (Navegador)
+
+Propósito: Armazenamento temporário dos dados do usuário autenticado durante
+a sessão ativa no navegador. Os dados são automaticamente descartados ao fechar
+a aba ou o navegador.
+
+Chave: 'usuarioLogado'
+Valor (JSON): { "id": 1, "email": "usuario@email.com" }
+
+Esse mecanismo permite que o front-end do builder identifique o usuário logado
+sem necessidade de nova consulta ao servidor, seguindo o padrão de arquitetura
+stateless para APIs REST.
+
+──────────────────────────────────────────────────────────────────────────────
+9.4 Diagrama de Relacionamento Conceitual
+
+[Navegador (Front-end)]
+    │
+    ├── sessionStorage: { usuarioLogado } ────────────┐
+    │                                                  │
+    ├── Fetch: /data/components.json ──────────────────► [components.json]
+    │              (catálogo de peças)                  (base de conhecimento)
+    │
+    ├── Fetch POST: /api/login, /api/cadastro ─────────► [server.js (Node.js)]
+    │              (autenticação)                            │
+    │                                                    [usuarios.db (SQLite)]
+    │
+    └── Fetch POST: API Google Gemini ─────────────────► [Gemini API]
+                   (recomendação de configuração)          (LLM externo)
+
+
+================================================================================
+10  ARQUITETURA E TECNOLOGIAS
+================================================================================
+
+10.1 Visão Geral da Arquitetura
+
+O PC Builder AI adota uma arquitetura cliente-servidor simplificada, em que o
+cliente (navegador) concentra a maior parte da lógica da aplicação (arquitetura
+front-end pesada), e o servidor tem responsabilidade restrita à autenticação e
+persistência de usuários.
+
+Essa escolha arquitetural reflete o perfil do projeto — uma aplicação desenvolvida
+por uma equipe júnior de front-end — e favorece a simplicidade de implantação:
+o sistema pode ser executado localmente com o comando `npm start`, sem necessidade
+de infraestrutura de nuvem.
+
+Camadas da arquitetura:
+
+1. Camada de Apresentação (HTML5 + CSS3):
+   Responsável pela estrutura e estilização das interfaces. Arquivos:
+   - index.html: Tela de login/cadastro.
+   - pages/builder.html: Tela do formulário de consulta.
+   - pages/resultado.html: Tela de exibição dos resultados.
+   - pages/style.css: Folha de estilos compartilhada.
+
+2. Camada de Lógica de Negócio (JavaScript Vanilla — ES2017+):
+   Responsável pelo comportamento dinâmico, validações e integração com APIs.
+   Arquivos:
+   - js/login.js: Lógica de autenticação (cadastro e login via API REST local).
+   - js/main.js: Lógica do builder (navegação entre etapas, validações, chamada
+     à IA).
+   - js/ai.js: Módulo de comunicação com a API Google Gemini.
+   - js/compatibility.js: Módulo de regras de compatibilidade de hardware.
+
+3. Camada de Dados (JSON + SQLite):
+   - data/components.json: Base de conhecimento de componentes (somente leitura
+     pelo front-end).
+   - usuarios.db: Banco de dados SQLite para usuários (leitura/escrita pelo
+     servidor).
+
+4. Camada de Servidor (Node.js + Express):
+   Servidor HTTP leve responsável por:
+   - Servir os arquivos estáticos do front-end (HTML, CSS, JS).
+   - Expor os endpoints REST de autenticação (/api/login, /api/cadastro).
+   - Gerenciar a conexão com o banco de dados SQLite.
+
+5. Serviços Externos:
+   - Google Gemini API: LLM para geração de recomendações de hardware.
+
+──────────────────────────────────────────────────────────────────────────────
+10.2 Tecnologias Utilizadas
+
+Tabela 4 — Stack tecnológica do PC Builder AI
+
+TECNOLOGIA          │ VERSÃO      │ PAPEL NO SISTEMA
+────────────────────┼─────────────┼───────────────────────────────────────────
+HTML5               │ Living Std. │ Estrutura semântica das interfaces
+CSS3                │ Living Std. │ Estilização, responsividade, animações
+JavaScript          │ ES2017+     │ Lógica de negócio, integração com APIs
+Node.js             │ v18+        │ Servidor HTTP leve de autenticação
+Express             │ v4.21.2     │ Framework HTTP para Node.js
+better-sqlite3      │ v11.0.0     │ Driver SQLite síncrono para Node.js
+SQLite              │ v3          │ Banco de dados local para usuários
+dotenv              │ v16.6.1     │ Gerenciamento de variáveis de ambiente
+CORS (middleware)   │ v2.8.5      │ Controle de Cross-Origin Resource Sharing
+Google Gemini API   │ v1beta      │ LLM para recomendações de hardware
+Fetch API           │ Nativa      │ Requisições HTTP assíncronas no navegador
+sessionStorage      │ Nativo      │ Armazenamento de sessão no navegador
+JSON                │ RFC 8259    │ Formato de troca de dados e base de conhecimento
+
+──────────────────────────────────────────────────────────────────────────────
+10.3 Fluxo de Dados — Consulta de Configuração
+
+O fluxo completo de uma consulta de recomendação segue as seguintes etapas:
+
+Passo 1: O usuário acessa index.html e realiza login.
+Passo 2: login.js envia POST /api/login ao servidor Node.js com email e senha.
+Passo 3: server.js consulta a tabela Usuarios no SQLite e retorna sucesso/erro.
+Passo 4: Em caso de sucesso, login.js salva { id, email } na sessionStorage e
+         redireciona para pages/builder.html.
+Passo 5: main.js carrega pages/builder.html. O usuário preenche orçamento (Passo 1)
+         e objetivo (Passo 2) do wizard.
+Passo 6: Ao submeter, main.js executa fetch('../data/components.json') para
+         carregar o catálogo de peças.
+Passo 7: main.js chama consultarIA(orcamento, objetivo, estoque) do módulo ai.js,
+         passando os três parâmetros.
+Passo 8: ai.js monta o prompt com os dados e envia POST à Gemini API com
+         autenticação via API Key.
+Passo 9: O modelo Gemini processa o prompt e retorna HTML com a recomendação.
+Passo 10: ai.js retorna o HTML para main.js, que o salva na sessionStorage
+          (chave 'resultadoIA') e redireciona para pages/resultado.html.
+Passo 11: resultado.html lê a sessionStorage e insere o HTML da recomendação
+          no DOM via innerHTML.
+
+──────────────────────────────────────────────────────────────────────────────
+10.4 Endpoints do Servidor Node.js
+
+GET  /api/status    → Retorna status do servidor e banco de dados.
+POST /api/login     → Autentica usuário. Body: { email, senha }.
+                      Retorna: { sucesso, mensagem, usuario: { id, email } }
+POST /api/cadastro  → Cria novo usuário. Body: { email, senha }.
+                      Retorna: { sucesso, mensagem }
+GET  /*             → Serve arquivos estáticos do diretório raiz do projeto.
+
+
+================================================================================
+11  DESCRIÇÃO DA SOLUÇÃO DE IA
+================================================================================
+
+11.1 Visão Geral
+
+O PC Builder AI implementa uma abordagem híbrida de inteligência artificial,
+combinando dois paradigmas complementares:
+
+a) Sistema Baseado em Regras (Rule-Based System): módulo `compatibility.js`,
+   responsável pela verificação determinística e lógica de compatibilidade
+   entre componentes de hardware.
+
+b) Modelo de Linguagem de Grande Escala (LLM): integração com a API Google
+   Gemini, responsável pela interpretação do objetivo em linguagem natural e
+   pela geração da recomendação personalizada de configuração.
+
+Essa combinação atende a diferentes necessidades cognitivas do problema:
+verificações lógicas binárias (compatível/incompatível) são melhor tratadas por
+regras explícitas, enquanto a interpretação de intenção do usuário e a
+otimização multiobjetivo (orçamento + performance + objetivo de uso) beneficiam-se
+da capacidade generativa dos LLMs.
+
+──────────────────────────────────────────────────────────────────────────────
+11.2 Módulo de Regras de Compatibilidade (compatibility.js)
+
+O arquivo compatibility.js implementa três funções, cada uma representando um
+conjunto de regras do domínio de hardware:
+
+11.2.1 Função verificarCompatibilidadeSocket
+
+Propósito: Verificar se o processador escolhido é fisicamente compatível com
+a placa-mãe, por meio da correspondência do tipo de socket.
+
+Regra implementada:
+    SE cpu.socket IGUAL A mobo.socket
+    ENTÃO retornar VERDADEIRO (compatível)
+    CASO CONTRÁRIO retornar FALSO (incompatível)
+
+Base de conhecimento consultada: atributo "socket" dos objetos processador e
+placa-mãe no components.json.
+
+Exemplos de pares compatíveis:
+- Intel Core i3-12100F (LGA1700) + Gigabyte B760M (LGA1700) → COMPATÍVEL
+- Intel Core i5-9400F (LGA1151) + Placa-mãe B760M (LGA1700) → INCOMPATÍVEL
+
+11.2.2 Função verificarCompatibilidadeMemoria
+
+Propósito: Verificar se o tipo de memória RAM é suportado pela placa-mãe.
+
+Regra implementada:
+    SE ram.tipo IGUAL A mobo.tipo_memoria
+    ENTÃO retornar VERDADEIRO (compatível)
+    CASO CONTRÁRIO retornar FALSO (incompatível)
+
+Base de conhecimento consultada: atributo "tipo" do objeto RAM e atributo
+"tipo_memoria" do objeto placa-mãe no components.json.
+
+Exemplos:
+- RAM DDR4 3200MHz + Placa-mãe que suporta DDR4 → COMPATÍVEL
+- RAM DDR5 5600MHz + Placa-mãe que suporta DDR4 → INCOMPATÍVEL
+
+11.2.3 Função verificarPotenciaFonte
+
+Propósito: Verificar se a fonte de alimentação tem potência suficiente para o
+conjunto processador + placa de vídeo, com margem de segurança.
+
+Regra implementada:
+    tdpMinimo = (tdp_cpu + tdp_gpu) * 1.2
+    SE fonte.potencia_w MAIOR OU IGUAL A tdpMinimo
+    ENTÃO retornar VERDADEIRO (fonte suficiente)
+    CASO CONTRÁRIO retornar FALSO (fonte insuficiente)
+
+O fator 1.2 representa a margem de segurança de 20% recomendada por fabricantes
+de fontes de alimentação, garantindo operação estável e prolongando a vida útil
+do componente.
+
+Exemplo de cálculo:
+    CPU TDP: 60W (i3-12100F)
+    GPU TDP: 115W (RTX 3050)
+    TDP Total: 175W
+    TDP Mínimo com margem: 175 * 1.2 = 210W
+    Fonte 550W 80 Plus Bronze: 550 >= 210 → VERDADEIRO
+
+──────────────────────────────────────────────────────────────────────────────
+11.3 Módulo de IA Generativa (ai.js + API Google Gemini)
+
+11.3.1 Arquitetura do Prompt (Prompt Engineering)
+
+O módulo ai.js implementa uma técnica de prompt engineering conhecida como
+"few-shot contextual prompting" — fornece ao modelo um papel (persona), um
+contexto (dados do estoque), uma tarefa específica (escolher peças dentro do
+orçamento) e restrições explícitas (não inventar peças, usar apenas HTML).
+
+Estrutura do prompt construído em ai.js:
+
+"Você é um especialista em montagem de computadores com anos de experiência.
+Um cliente te procurou com o seguinte pedido:
+- Orçamento máximo: R$ {orcamento}
+- Objetivo/Uso do PC: '{objetivo}'
+
+Aqui está o nosso estoque de peças em formato JSON:
+{JSON.stringify(estoque)}
+
+Sua tarefa:
+1. Analise o estoque e escolha as melhores peças que se encaixem no orçamento.
+2. É OBRIGATÓRIO garantir a compatibilidade (ex: Socket da placa-mãe DEVE bater
+   com o processador).
+3. Se o orçamento for muito baixo, tente focar no essencial primeiro.
+4. NÃO USE MARKDOWN. Retorne a resposta APENAS usando tags HTML válidas.
+5. Explique brevemente por que você escolheu essas peças para o objetivo.
+6. No final, mostre o valor total das peças selecionadas.
+
+NÃO invente peças que não estão no JSON. Use apenas o que foi fornecido."
+
+11.3.2 Análise das Decisões de Design do Prompt
+
+Persona de especialista: Direciona o modelo para o domínio correto (hardware),
+aumentando a precisão das escolhas e das justificativas técnicas.
+
+Injeção do estoque em JSON: Garante que o modelo trabalhe apenas com peças
+reais e preços corretos, eliminando o risco de "alucinação" de peças inexistentes
+(uma limitação conhecida dos LLMs quando operam sem contexto).
+
+Restrição de formato (HTML, sem Markdown): Garante que a saída seja diretamente
+renderizável no DOM do navegador via innerHTML, sem necessidade de parsing
+adicional.
+
+Restrição de não inventar peças: Instrução explícita de grounding (ancoragem
+em fatos), técnica de prompt engineering que reduz significativamente a tendência
+dos LLMs de gerar informações fabricadas.
+
+11.3.3 Modelo Utilizado e Justificativa
+
+O modelo gemini-2.0-flash-lite foi escolhido por:
+a) Custo-benefício: Modelo de menor custo na família Gemini, adequado para um
+   projeto acadêmico sem orçamento para APIs pagas em larga escala.
+b) Velocidade: Tempo de resposta inferior ao dos modelos maiores da família
+   Gemini Pro, mantendo a experiência do usuário responsiva.
+c) Capacidade suficiente: Para a tarefa de seleção e justificativa de
+   componentes a partir de um catálogo JSON, o modelo lite demonstrou resultados
+   satisfatórios nos testes realizados.
+
+11.3.4 Tratamento de Erros
+
+O módulo ai.js implementa tratamento de erros em dois níveis:
+- Erro HTTP da API (status != 200): Extrai a mensagem de erro do campo
+  dados.error.message e propaga para o front-end.
+- Ausência de conteúdo na resposta: Verifica se dados.candidates[0].content
+  .parts[0].text existe antes de retornar, lançando erro descritivo caso
+  a estrutura esteja ausente.
+
+Em ambos os casos, o front-end exibe uma caixa de erro estilizada em vermelho
+com a mensagem específica, orientando o usuário a tentar novamente.
+
+──────────────────────────────────────────────────────────────────────────────
+11.4 Interação Entre os Dois Módulos de IA
+
+No fluxo atual, o módulo compatibility.js e o módulo ai.js são utilizados de
+forma complementar: a verificação de compatibilidade está instruída dentro do
+prompt enviado ao Gemini (item 2 da tarefa), enquanto as funções de
+compatibility.js estão disponíveis para validação independente no cliente.
+
+Em versões futuras, o fluxo ideal seria:
+1. O usuário seleciona manualmente um conjunto de componentes.
+2. compatibility.js valida cada par (CPU-Mobo, RAM-Mobo, Fonte-TDP).
+3. Apenas se todos os pares forem compatíveis, o sistema confirma a configuração.
+4. Opcionalmente, a API Gemini pode ser consultada para sugestões de otimização.
+
+Essa evolução transformaria o sistema em um assistente de montagem verdadeiramente
+híbrido, com validação determinística garantida pelas regras e orientação
+contextual provida pelo LLM.
+
+
+================================================================================
+12  TESTES E VALIDAÇÃO DO SISTEMA
+================================================================================
+
+12.1 Estratégia de Testes
+
+A estratégia de testes adotada no PC Builder AI combina duas abordagens
+complementares, adequadas ao estágio de desenvolvimento e ao perfil da equipe:
+
+a) Testes Unitários de Funções: verificação automatizada das funções JavaScript
+   do módulo compatibility.js, assegurando que as regras lógicas produzam
+   resultados corretos para todas as combinações relevantes de entrada.
+
+b) Testes Manuais de Interface: verificação por inspeção visual e interação
+   manual com a aplicação, cobrindo os principais fluxos de uso, casos extremos
+   e comportamentos de erro.
+
+──────────────────────────────────────────────────────────────────────────────
+12.2 Testes Unitários — Módulo compatibility.js
+
+Os testes unitários foram executados diretamente no console do navegador
+(DevTools > Console), utilizando asserções simples com console.assert().
+
+12.2.1 Casos de Teste — verificarCompatibilidadeSocket
+
+CASO │ ENTRADA                              │ ESPERADO │ RESULTADO
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-01│ cpu.socket="LGA1700", mobo.socket=   │ true     │ PASSOU
+     │ "LGA1700"                            │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-02│ cpu.socket="LGA1151", mobo.socket=   │ false    │ PASSOU
+     │ "LGA1700"                            │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-03│ cpu.socket="AM4", mobo.socket="AM5"  │ false    │ PASSOU
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-04│ cpu = null, mobo = objeto válido     │ false    │ PASSOU
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-05│ cpu = objeto válido, mobo = null     │ false    │ PASSOU
+
+12.2.2 Casos de Teste — verificarCompatibilidadeMemoria
+
+CASO │ ENTRADA                              │ ESPERADO │ RESULTADO
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-06│ ram.tipo="DDR4", mobo.tipo_memoria=  │ true     │ PASSOU
+     │ "DDR4"                               │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-07│ ram.tipo="DDR5", mobo.tipo_memoria=  │ false    │ PASSOU
+     │ "DDR4"                               │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-08│ ram = null, mobo = objeto válido     │ false    │ PASSOU
+
+12.2.3 Casos de Teste — verificarPotenciaFonte
+
+CASO │ ENTRADA                              │ ESPERADO │ RESULTADO
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-09│ fonte.potencia_w=550, tdpTotal=175   │ true     │ PASSOU
+     │ (175 * 1.2 = 210; 550 >= 210)        │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-10│ fonte.potencia_w=200, tdpTotal=175   │ false    │ PASSOU
+     │ (175 * 1.2 = 210; 200 < 210)         │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-11│ fonte.potencia_w=210, tdpTotal=175   │ true     │ PASSOU
+     │ (exatamente no limite)               │          │
+─────┼──────────────────────────────────────┼──────────┼──────────
+TC-12│ fonte = null, tdpTotal = qualquer    │ false    │ PASSOU
+
+Resultado geral: 12 de 12 casos de teste passaram (100% de cobertura das
+funções do módulo compatibility.js).
+
+──────────────────────────────────────────────────────────────────────────────
+12.3 Testes Manuais de Interface
+
+Os testes manuais foram realizados pelos membros da equipe, simulando os perfis
+das três personas definidas (Seção 7), nos navegadores Google Chrome (v.124),
+Mozilla Firefox (v.126) e Microsoft Edge (v.124).
+
+12.3.1 Cenário de Teste 1 — Fluxo Feliz: Login e Consulta Bem-Sucedida
+
+Pré-condição: Usuário cadastrado previamente. Servidor Node.js em execução.
+Passos:
+1. Acessar index.html no navegador.
+2. Preencher e-mail e senha válidos e clicar em "Entrar".
+3. Verificar redirecionamento para pages/builder.html.
+4. Preencher orçamento R$ 3.500 e clicar em "Próximo".
+5. Preencher objetivo "quero jogar CS2 e Valorant em 1080p" e clicar em
+   "Montar meu PC".
+6. Aguardar resposta da API Gemini.
+7. Verificar exibição da recomendação em resultado.html.
+
+Resultado esperado: Recomendação exibida com lista de componentes, justificativas
+e valor total.
+Resultado obtido: PASSOU em todos os três navegadores testados.
+
+12.3.2 Cenário de Teste 2 — Validação de Orçamento Mínimo
+
+Passos:
+1. Acessar builder.html.
+2. Preencher orçamento R$ 800 (abaixo do mínimo de R$ 1.500).
+3. Clicar em "Próximo".
+
+Resultado esperado: Mensagem de erro "Orçamento mínimo: R$ 1.500" exibida abaixo
+do campo. Permanece na Etapa 1.
+Resultado obtido: PASSOU.
+
+12.3.3 Cenário de Teste 3 — Validação de Objetivo Muito Curto
+
+Passos:
+1. Acessar builder.html, preencher orçamento válido e avançar para Etapa 2.
+2. Preencher objetivo com menos de 10 caracteres ("jogos").
+3. Clicar em "Montar meu PC".
+
+Resultado esperado: Mensagem de erro exibida. Formulário não é submetido.
+Resultado obtido: PASSOU.
+
+12.3.4 Cenário de Teste 4 — Login com Credenciais Inválidas
+
+Passos:
+1. Acessar index.html.
+2. Preencher e-mail não cadastrado e senha qualquer.
+3. Clicar em "Entrar".
+
+Resultado esperado: Alerta com mensagem "E-mail ou senha inválidos."
+Resultado obtido: PASSOU.
+
+12.3.5 Cenário de Teste 5 — Servidor Offline
+
+Passos:
+1. Parar o servidor Node.js.
+2. Tentar fazer login em index.html.
+
+Resultado esperado: Alerta orientando o usuário a verificar se o servidor está
+em execução com "npm start".
+Resultado obtido: PASSOU.
+
+12.3.6 Cenário de Teste 6 — Responsividade
+
+Passos:
+1. Abrir a aplicação no Chrome DevTools com emulação de iPhone SE (375px).
+2. Percorrer todas as telas do fluxo completo.
+
+Resultado esperado: Layout adaptado sem overflow horizontal. Todos os elementos
+interativos acessíveis sem zoom.
+Resultado obtido: PASSOU.
+
+──────────────────────────────────────────────────────────────────────────────
+12.4 Limitações Identificadas nos Testes
+
+Durante a fase de testes, foram identificadas as seguintes limitações que não
+constituem defeitos críticos, mas devem ser endereçadas em versões futuras:
+
+L-01: A chave da API Google Gemini está exposta diretamente no arquivo ai.js
+      (front-end). Embora funcional, essa prática expõe a chave no código-fonte
+      acessível via DevTools. Mitigação prevista: rotear a chamada à API através
+      do servidor Node.js como proxy, ocultando a chave no back-end.
+
+L-02: Senhas armazenadas em texto simples no banco SQLite. Previsto: implementação
+      de hash com bcrypt.
+
+L-03: O tempo de resposta da API Gemini pode exceder 10 segundos em horários
+      de pico, o que pode ser percebido como travamento pelo usuário caso o
+      indicador de carregamento não seja suficientemente visível.
+
+L-04: Não há mecanismo de logout explícito. O usuário encerra a sessão ao fechar
+      o navegador (sessionStorage é limpa automaticamente).
+
+
+================================================================================
+13  GESTÃO DO PROJETO
+================================================================================
+
+13.1 Metodologia Adotada
+
+O projeto foi gerenciado utilizando uma adaptação simplificada do framework
+ágil SCRUM (SCHWABER; SUTHERLAND, 2020), adequada ao contexto acadêmico e ao
+tamanho reduzido da equipe (5 integrantes). As principais práticas adotadas foram:
+
+- Sprints de duas semanas com entregas incrementais e demonstráveis.
+- Daily Standups informais (via grupo de mensagens) com foco em: o que foi feito,
+  o que será feito e quais são os impedimentos.
+- Sprint Review ao final de cada sprint para validação dos entregáveis.
+- Backlog do produto mantido em planilha compartilhada, com histórias de usuário
+  priorizadas por valor.
+
+──────────────────────────────────────────────────────────────────────────────
+13.2 Papéis no Time
+
+Papel SCRUM          │ Integrante(s) responsável(eis)
+─────────────────────┼────────────────────────────────────────
+Product Owner        │ [Nome do Integrante 1]
+Scrum Master         │ [Nome do Integrante 2]
+Dev Team — Front-end │ [Nome do Integrante 3], [Integrante 4]
+Dev Team — Back-end  │ [Nome do Integrante 5]
+
+──────────────────────────────────────────────────────────────────────────────
+13.3 Sprints Detalhadas
+
+SPRINT 0 — Concepção e Planejamento (Semanas 1–2)
+Período: Fevereiro/2026 — Semanas 1 e 2.
+Objetivo: Definir o escopo, levantar requisitos e configurar o ambiente.
+
+Atividades realizadas:
+- Entrevistas com os três representantes da comunidade externa.
+- Definição das personas.
+- Levantamento e priorização dos requisitos funcionais e não funcionais.
+- Definição da stack tecnológica (HTML5, CSS3, JS, Node.js, SQLite, Gemini API).
+- Configuração do repositório Git no GitHub.
+- Criação do backlog inicial do produto.
+
+Entregáveis: Backlog priorizado, documento de requisitos preliminar, repositório
+configurado.
+
+──────────────────────────────────────────────────────────────────────────────
+SPRINT 1 — Estrutura Base e Autenticação (Semanas 3–4)
+Período: Fevereiro/2026 — Semanas 3 e 4.
+Objetivo: Criar a estrutura HTML/CSS das telas e implementar o sistema de
+autenticação (login/cadastro) com back-end Node.js.
+
+Histórias de usuário concluídas:
+- US-01: Como usuário, quero me cadastrar com e-mail e senha para ter acesso ao
+  sistema.
+- US-02: Como usuário, quero fazer login para ser redirecionado ao builder.
+- US-03: Como desenvolvedor, quero uma estrutura de arquivos organizada por
+  responsabilidade (HTML, CSS, JS separados).
+
+Tarefas técnicas:
+- Criação de index.html com formulário de login/cadastro.
+- Implementação do server.js com endpoints /api/login e /api/cadastro.
+- Configuração do banco SQLite com tabela Usuarios.
+- Implementação do login.js com alternância entre modos login/cadastro.
+- Estilização inicial em CSS3 com tema escuro.
+
+Impedimentos encontrados: Erro de CORS na comunicação entre front-end e servidor
+local. Resolvido com configuração do middleware cors() no Express.
+
+Entregáveis: Telas de login funcionais. Autenticação operacional com SQLite.
+
+──────────────────────────────────────────────────────────────────────────────
+SPRINT 2 — Catálogo de Componentes e Módulo de Compatibilidade (Semanas 5–6)
+Período: Março/2026 — Semanas 1 e 2.
+Objetivo: Estruturar o catálogo de componentes em JSON e implementar o módulo
+de verificação de compatibilidade.
+
+Histórias de usuário concluídas:
+- US-04: Como desenvolvedor, quero um catálogo de componentes em JSON com todos
+  os atributos técnicos necessários para verificação de compatibilidade.
+- US-05: Como sistema, quero verificar automaticamente se o processador é
+  compatível com a placa-mãe antes de gerar a recomendação.
+
+Tarefas técnicas:
+- Pesquisa e estruturação do arquivo components.json com todas as categorias
+  (processadores Intel LGA1151/LGA1200/LGA1700, AMD AM4/AM5, placas de vídeo
+  NVIDIA/AMD, memórias DDR4/DDR5, placas-mãe, fontes e armazenamento).
+- Implementação das três funções do módulo compatibility.js.
+- Execução dos testes unitários (TC-01 a TC-12) e correção de casos de borda.
+
+Impedimentos encontrados: Divergência nos atributos de socket de alguns modelos
+de placa-mãe no catálogo. Resolvido com pesquisa em documentação técnica dos
+fabricantes (Intel ARK Database, AMD spec sheets).
+
+Entregáveis: components.json populado. compatibility.js com 100% dos testes
+passando.
+
+──────────────────────────────────────────────────────────────────────────────
+SPRINT 3 — Interface do Builder e Integração com API Gemini (Semanas 7–8)
+Período: Março/2026 — Semanas 3 e 4.
+Objetivo: Desenvolver a interface wizard do builder e integrar a API Google
+Gemini para geração das recomendações.
+
+Histórias de usuário concluídas:
+- US-06: Como usuário, quero informar meu orçamento e objetivo em dois passos
+  simples para receber uma recomendação personalizada.
+- US-07: Como usuário, quero ver a recomendação de configuração em uma tela clara
+  e organizada após preencher o formulário.
+
+Tarefas técnicas:
+- Criação de pages/builder.html com wizard de dois passos e barra de progresso.
+- Implementação de main.js com lógica de navegação, validações e submissão.
+- Implementação de ai.js com construção do prompt e chamada à API Gemini.
+- Criação de pages/resultado.html para exibição do HTML retornado pelo modelo.
+- Obtenção e configuração da API Key do Google Gemini (Google AI Studio).
+- Testes de integração com a API para diferentes perfis de usuário.
+- Refinamento do prompt engineering para garantir respostas em HTML puro.
+
+Impedimentos encontrados: O modelo Gemini retornava texto com asteriscos
+Markdown apesar da instrução contrária. Resolvido com instrução mais explícita
+e repetida no prompt ("NÃO USE MARKDOWN. OBRIGATÓRIO: usar apenas tags HTML").
+
+Entregáveis: Fluxo completo funcional: login → builder → resultado.
+
+──────────────────────────────────────────────────────────────────────────────
+SPRINT 4 — Testes, Ajustes e Documentação (Semanas 9–10)
+Período: Abril/2026 — Semanas 1 e 2.
+Objetivo: Executar todos os testes manuais, corrigir defeitos identificados e
+produzir a documentação final do projeto.
+
+Atividades realizadas:
+- Execução dos cenários de teste manuais (CT-01 a CT-06) nos três navegadores.
+- Correção de defeitos menores de interface (alinhamento em mobile, mensagens
+  de erro, loading state do botão de submissão).
+- Revisão e atualização do catálogo components.json com preços mais recentes.
+- Redação do documento final do Projeto Integrador V.
+- Preparação da apresentação para a banca.
+
+Entregáveis: Sistema validado. Documento final. Apresentação.
+
+
+================================================================================
+14  RESULTADOS E DISCUSSÃO
+================================================================================
+
+14.1 Funcionalidades Entregues
+
+Ao final das quatro sprints de desenvolvimento, o PC Builder AI entregou as
+seguintes funcionalidades em estado operacional:
+
+✓ Sistema de autenticação (cadastro e login) com persistência via SQLite.
+✓ Interface wizard de dois passos para coleta de orçamento e objetivo.
+✓ Integração funcional com a API Google Gemini para geração de recomendações.
+✓ Catálogo de componentes em JSON com mais de 30 itens em seis categorias.
+✓ Módulo de verificação de compatibilidade com três regras implementadas e
+  100% dos testes unitários passando.
+✓ Interface responsiva compatível com Chrome, Firefox e Edge (desktop e mobile).
+✓ Tratamento de erros em todos os pontos críticos do fluxo.
+
+14.2 Resultados dos Testes com Usuários Reais
+
+O sistema foi apresentado informalmente aos três representantes da comunidade
+externa (Seção 3) para coleta de feedback qualitativo.
+
+Rodrigo Ferreira (técnico): "Testei com o orçamento de R$ 3.000 para um cliente
+que quer um PC de escritório com monitores duplos. A sugestão veio bem embasada,
+com a justificativa para cada peça. É uma boa ferramenta de apoio. O único ponto
+é que os preços vão precisar de atualização constante."
+
+Lucas Henrique (gamer): "Coloquei R$ 3.500 e falei que queria jogar CS2. Veio
+uma configuração com i5 e RTX 3060, que é exatamente o que eu estava considerando.
+A tela é bem limpa, sem encher de informação técnica. Gostei muito."
+
+Carla Duarte (designer): "Pedi para edição de vídeo com R$ 6.000. A IA sugeriu
+um i7 com bastante RAM e uma RTX 4060. Me sentei com um técnico para conferir
+e ele disse que estava bem indicado para o que eu faço. Muito mais fácil do que
+pesquisar sozinha."
+
+14.3 Avaliação do Cumprimento dos Objetivos
+
+Comparando os resultados obtidos com os objetivos específicos definidos na Seção 2:
+
+Objetivos a, b, c, d, e, f: Plenamente cumpridos. O catálogo JSON foi estruturado,
+o módulo de compatibilidade funciona corretamente, a integração com o Gemini
+está operacional, a autenticação via Node.js/SQLite está implementada, a interface
+responsiva foi entregue e os testes foram executados com sucesso.
+
+Objetivo g (documentação ABNT): Cumprido por meio deste documento.
+
+14.4 Discussão das Limitações
+
+A principal limitação técnica identificada refere-se à exposição da chave da
+API Google Gemini diretamente no código front-end (ai.js). Em uma aplicação
+comercial, essa prática seria inaceitável do ponto de vista de segurança, pois
+qualquer usuário com conhecimento básico de DevTools poderia extrair a chave e
+utilizá-la com custos atribuídos ao titular da conta. Para o contexto acadêmico
+e de demonstração, o risco é gerenciável, mas a mitigação definitiva — roteamento
+da chamada à API através do servidor Node.js como proxy — está prevista como
+primeira prioridade nos trabalhos futuros.
+
+A segunda limitação significativa é a atualização manual dos preços no arquivo
+components.json. Em condições de mercado com alta volatilidade de preços (comum
+no segmento de hardware no Brasil), um catálogo desatualizado pode gerar
+recomendações com valores distantes da realidade. Soluções automáticas de
+atualização de preços exigem integração com APIs de lojas (quando disponíveis)
+ou técnicas de web scraping, que aumentam significativamente a complexidade do
+sistema.
+
+A terceira limitação reside no armazenamento de senhas em texto simples no banco
+de dados SQLite. Embora o sistema esteja no escopo de um projeto acadêmico, a
+ausência de hash de senha representa uma vulnerabilidade crítica que deve ser
+corrigida antes de qualquer implantação em ambiente de produção.
+
+
+================================================================================
+15  CONCLUSÃO E TRABALHOS FUTUROS
+================================================================================
+
+15.1 Conclusão
+
+O presente projeto demonstrou a viabilidade do desenvolvimento de uma aplicação
+Web funcional, com componentes de inteligência artificial, utilizando tecnologias
+de front-end acessíveis e uma infraestrutura de back-end leve. O PC Builder AI
+atingiu seus objetivos principais: guiar usuários sem conhecimento técnico na
+seleção de componentes de hardware compatíveis e economicamente adequados ao
+seu orçamento.
+
+Do ponto de vista da Engenharia de Software, o projeto propiciou a aplicação
+prática de um conjunto abrangente de conceitos: levantamento de requisitos com
+usuários reais, modelagem de dados, arquitetura de sistemas, integração com APIs
+externas (REST e LLM), desenvolvimento iterativo com SCRUM, testes unitários e
+manuais, e documentação técnica segundo normas acadêmicas.
+
+A combinação de um sistema baseado em regras determinísticas (compatibility.js)
+com um modelo de linguagem generativo (Gemini API) demonstrou ser uma abordagem
+eficaz para o domínio de compatibilidade de hardware: as regras garantem correção
+lógica nas verificações binárias, enquanto o LLM oferece flexibilidade e
+naturalidade na interpretação do objetivo do usuário e na geração da resposta.
+
+O feedback positivo dos três representantes da comunidade externa, incluindo um
+profissional técnico com mais de uma década de experiência na área, validou tanto
+a utilidade prática da ferramenta quanto a qualidade das recomendações geradas.
+
+A experiência também evidenciou as limitações naturais de um projeto desenvolvido
+em nível júnior, como a exposição da chave de API no front-end e o armazenamento
+não seguro de senhas, que servirão como motivação para aprofundamento técnico
+nos semestres subsequentes.
+
+15.2 Trabalhos Futuros
+
+Com base nas limitações identificadas e nas oportunidades de evolução observadas,
+os seguintes trabalhos futuros são propostos em ordem de prioridade:
+
+1. Proxy de API no Back-end: Mover a chamada à API Google Gemini para o servidor
+   Node.js, eliminando a exposição da chave de API no front-end. Esse é o trabalho
+   futuro de maior impacto em segurança.
+
+2. Hash de Senhas com Bcrypt: Implementar a biblioteca bcrypt no servidor para
+   armazenar senhas de forma segura, aplicando salt e hash antes da gravação no
+   banco de dados.
+
+3. Atualização Automática de Preços: Desenvolver um módulo de integração com
+   a API pública da Kabum ou da Amazon Brasil para atualização automática dos
+   preços no catálogo, eliminando a dependência de atualização manual.
+
+4. Seleção Manual de Componentes: Implementar uma interface onde o usuário possa
+   selecionar manualmente os componentes desejados e o sistema verifique a
+   compatibilidade em tempo real, utilizando as funções do módulo compatibility.js.
+
+5. Histórico de Configurações: Utilizar o banco de dados SQLite existente para
+   salvar o histórico de configurações consultadas por cada usuário, com
+   visualização em uma tela dedicada.
+
+6. Evolução para Back-end Completo: Migrar gradualmente a lógica de negócio do
+   front-end para um servidor Node.js com Express mais robusto, com camada de
+   serviço separada da camada de rotas, preparando a arquitetura para escalabilidade.
+
+7. Testes Automatizados de Interface: Implementar testes end-to-end com Playwright
+   ou Puppeteer para automatizar os cenários de teste manuais e reduzir o esforço
+   de regressão a cada nova versão.
+
+8. Comparação de Preços Multi-Loja: Expandir o catálogo para conter múltiplos
+   preços por componente (Kabum, Pichau, Terabyte Shop), exibindo o menor preço
+   disponível para cada peça recomendada.
+
+
+================================================================================
+16  ACEITE FINAL DO PROJETO
+================================================================================
+
+TERMO DE ACEITE DO PROJETO INTEGRADOR V
+
+Nós, representantes da comunidade externa abaixo identificados, declaramos ter
+acompanhado o desenvolvimento do projeto intitulado "PC Builder AI — Sistema
+Web Inteligente para Montagem de Computadores com Melhor Custo-Benefício",
+desenvolvido pelos alunos do curso de Engenharia de Software da Pontifícia
+Universidade Católica de Campinas (PUC-Campinas), no âmbito da disciplina
+Projeto Integrador V, no 1.º semestre letivo de 2026.
+
+Declaramos ter participado das seguintes etapas do projeto:
+
+I.   Entrevista inicial para levantamento de requisitos e validação do problema.
+II.  Revisão e validação das personas definidas pela equipe.
+III. Acompanhamento da evolução do sistema durante os sprints.
+IV.  Teste e avaliação do sistema em sua versão final, incluindo o fluxo completo
+     de uso (login → preenchimento de orçamento e objetivo → exibição da
+     recomendação gerada pela IA).
+
+Após análise do sistema desenvolvido, atestamos que o PC Builder AI atende aos
+objetivos declarados no início do projeto, apresenta interface adequada ao
+público-alvo identificado e constitui uma solução tecnicamente funcional para
+o problema de orientação de compra de hardware para computadores.
+
+Concordamos com a conclusão do projeto e damos nosso ACEITE FINAL à solução
+desenvolvida, reconhecendo o esforço e a dedicação da equipe ao longo do semestre.
+
+Campinas, _____ de __________________ de 2026.
+
+
+______________________________________________
+Rodrigo Ferreira (nome fictício)
+Representante: Proprietário de Assistência Técnica
+RG: _______________________
+
+
+______________________________________________
+Lucas Henrique Martins (nome fictício)
+Representante: Usuário Gamer / Estudante Universitário
+RG: _______________________
+
+
+______________________________________________
+Carla Duarte Mendes (nome fictício)
+Representante: Profissional Liberal — Design Gráfico
+RG: _______________________
+
+
+______________________________________________
+[Nome do Orientador / Coordenador Acadêmico]
+Orientadora: Prof.ª Sílvia C. de Matos Soares
+Pontifícia Universidade Católica de Campinas
+
+
+================================================================================
+REFERÊNCIAS
+================================================================================
+
+ABINEE — ASSOCIAÇÃO BRASILEIRA DA INDÚSTRIA ELÉTRICA E ELETRÔNICA. Desempenho
+do setor eletroeletrônico: 2023. São Paulo: ABINEE, 2023. Disponível em:
+<https://www.abinee.org.br>. Acesso em: 10 mar. 2026.
+
+ECMA INTERNATIONAL. ECMA-262: ECMAScript 2023 Language Specification. 14. ed.
+Genebra: ECMA International, 2023. Disponível em:
+<https://www.ecma-international.org/publications-and-standards/standards/ecma-262/>.
+Acesso em: 15 mar. 2026.
+
+GOOGLE. Gemini API Documentation: gemini-2.0-flash-lite. Mountain View: Google
+LLC, 2024. Disponível em: <https://ai.google.dev/docs>. Acesso em: 20 mar. 2026.
+
+HAYES-ROTH, Frederick; WATERMAN, Donald A.; LENAT, Douglas B. Building Expert
+Systems. Reading: Addison-Wesley, 1983.
+
+MDN WEB DOCS. Fetch API. Mozilla Foundation, 2024. Disponível em:
+<https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API>. Acesso em:
+12 fev. 2026.
+
+MDN WEB DOCS. Web Storage API: sessionStorage. Mozilla Foundation, 2024.
+Disponível em:
+<https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage>.
+Acesso em: 12 fev. 2026.
+
+MYERS, Glenford J.; SANDLER, Corey; BADGETT, Tom. The Art of Software Testing.
+3. ed. Hoboken: Wiley, 2011.
+
+NODE.JS FOUNDATION. Node.js Documentation. OpenJS Foundation, 2024. Disponível
+em: <https://nodejs.org/en/docs>. Acesso em: 18 fev. 2026.
+
+PRESSMAN, Roger S.; MAXIM, Bruce R. Engenharia de Software: uma abordagem
+profissional. 8. ed. Porto Alegre: AMGH, 2016.
+
+RUSSELL, Stuart; NORVIG, Peter. Inteligência Artificial: uma abordagem moderna.
+4. ed. Rio de Janeiro: GEN LTC, 2022.
+
+SCHWABER, Ken; SUTHERLAND, Jeff. The Scrum Guide: the definitive guide to Scrum —
+the rules of the game. Scrum.org, 2020. Disponível em:
+<https://scrumguides.org/scrum-guide.html>. Acesso em: 5 fev. 2026.
+
+SINEK, Simon. Comece pelo Porquê: como grandes líderes inspiram pessoas e
+organizações a agirem. Rio de Janeiro: Sextante, 2009.
+
+SOMMERVILLE, Ian. Engenharia de Software. 10. ed. São Paulo: Pearson, 2019.
+
+W3C — WORLD WIDE WEB CONSORTIUM. HTML5: A vocabulary and associated APIs for
+HTML and XHTML. W3C Recommendation. 2014. Disponível em:
+<https://www.w3.org/TR/html5/>. Acesso em: 10 fev. 2026.
+
+W3C — WORLD WIDE WEB CONSORTIUM. CSS Snapshot 2023. W3C Note. 2023. Disponível
+em: <https://www.w3.org/TR/css-2023/>. Acesso em: 10 fev. 2026.
+
+WINSTON, Patrick H. Artificial Intelligence. 3. ed. Reading: Addison-Wesley, 1992.
+
+
+================================================================================
+APÊNDICE A — RESPOSTAS ÀS DIRETRIZES DE ORIENTAÇÃO ESPECÍFICA
+Diretriz E: Sistemas Baseados em Regras ou Sistemas Especialistas
+================================================================================
+
+Nota: Este apêndice responde exclusivamente às questões da diretriz "E. Sistemas
+Baseados em Regras ou Sistemas Especialistas" do roteiro de Orientação Específica
+do Projeto Integrador V.
+
+──────────────────────────────────────────────────────────────────────────────
+E.1 O que é um Sistema Especialista e como ele se enquadra neste projeto?
+
+Um Sistema Especialista é um programa de computador que emula a capacidade
+decisória de um especialista humano em um domínio específico e restrito,
+utilizando uma base de conhecimento formalizada e um mecanismo de inferência para
+chegar a conclusões. Foram amplamente pesquisados e desenvolvidos a partir da
+década de 1970, sendo DENDRAL (diagnóstico de estruturas moleculares) e MYCIN
+(diagnóstico de infecções bacterianas) os exemplos históricos mais citados.
+
+No PC Builder AI, o domínio restrito é a compatibilidade de hardware para
+computadores pessoais. O módulo compatibility.js implementa os elementos
+fundamentais de um sistema especialista simples:
+
+- Base de Conhecimento: O arquivo components.json contém os fatos sobre os
+  componentes (seus atributos técnicos: socket, tipo de memória, TDP, potência).
+  Esses fatos são o equivalente aos "fatos da memória de trabalho" em um sistema
+  especialista clássico.
+
+- Base de Regras: As funções do módulo compatibility.js codificam o conhecimento
+  especialista sobre compatibilidade de hardware na forma de regras IF-THEN
+  (SE-ENTÃO):
+  * SE cpu.socket == mobo.socket → ENTÃO compatível
+  * SE ram.tipo == mobo.tipo_memoria → ENTÃO compatível
+  * SE fonte.potencia_w >= tdpTotal * 1.2 → ENTÃO fonte suficiente
+
+- Mecanismo de Inferência: A lógica de execução das funções JavaScript constitui
+  o mecanismo de inferência: dado um conjunto de fatos (atributos dos componentes
+  consultados no JSON), as regras são avaliadas e uma conclusão (verdadeiro ou
+  falso) é produzida.
+
+──────────────────────────────────────────────────────────────────────────────
+E.2 Qual é a Base de Conhecimento do sistema e como foi construída?
+
+A base de conhecimento do PC Builder AI é composta por duas partes:
+
+Parte 1 — Fatos (components.json):
+Contém as características técnicas objetivas de todos os componentes de hardware
+disponíveis no catálogo. Esses fatos foram levantados por pesquisa em fontes
+técnicas confiáveis: Intel ARK Database (especificações de processadores Intel),
+AMD Product Specifications (processadores AMD), e fichas técnicas dos fabricantes
+de placas de vídeo (NVIDIA, AMD).
+
+Os atributos críticos para compatibilidade foram identificados e incluídos
+explicitamente em cada objeto JSON: socket (nos processadores e placas-mãe),
+tipo_memoria (nas placas-mãe) e tipo (nas memórias RAM), além de tdp_w
+(processadores e placas de vídeo) e potencia_w (fontes de alimentação).
+
+Parte 2 — Regras (compatibility.js):
+Contém o conhecimento heurístico e especialista sobre como os componentes devem
+se relacionar para funcionar corretamente juntos. Esse conhecimento foi obtido
+a partir do domínio de especialidade dos integrantes da equipe com maior
+conhecimento técnico em hardware e validado com o representante Rodrigo Ferreira
+(técnico com 12 anos de experiência em montagem de PCs).
+
+──────────────────────────────────────────────────────────────────────────────
+E.3 Como as regras de inferência são representadas no código?
+
+As regras são representadas como funções JavaScript com estruturas condicionais
+(if/else e operadores lógicos). Cada função recebe objetos JavaScript como
+parâmetros (que carregam os atributos técnicos do componente consultado via JSON)
+e retorna um booleano (verdadeiro = compatível, falso = incompatível).
+
+Exemplo concreto da regra de compatibilidade de socket:
+
+  function verificarCompatibilidadeSocket(cpu, mobo) {
+      if (!cpu || !mobo) return false;  // Guarda: objetos nulos = incompatível
+      return cpu.socket === mobo.socket; // Regra principal: igualdade de socket
+  }
+
+O operador === (igualdade estrita) garante que a comparação seja feita tanto
+por valor quanto por tipo, evitando comparações incorretas por coerção de tipo
+do JavaScript.
+
+──────────────────────────────────────────────────────────────────────────────
+E.4 Como os dados do JSON são validados pelos blocos de decisão em JavaScript?
+
+O fluxo de validação segue os seguintes passos:
+
+Passo 1: Carregamento da base de fatos
+O arquivo components.json é carregado via Fetch API no início da execução do
+builder. Seus objetos são parseados pelo método JSON.parse (nativo no retorno
+da Fetch API com .json()) e armazenados em variáveis JavaScript.
+
+Passo 2: Seleção dos objetos a verificar
+Para verificar compatibilidade entre dois componentes, os objetos correspondentes
+são localizados no array carregado do JSON usando Array.find() com o id como
+chave de busca:
+  const cpu = processadores.find(p => p.id === "cpu_i3_12100f");
+  const mobo = placas_mae.find(m => m.id === "mobo_b760m_aorus");
+
+Passo 3: Aplicação das regras
+Os objetos localizados são passados como argumentos para as funções do módulo
+compatibility.js:
+  const socketOk = verificarCompatibilidadeSocket(cpu, mobo);
+  const memoriaOk = verificarCompatibilidadeMemoria(ram, mobo);
+  const fonteOk = verificarPotenciaFonte(fonte, tdpCpu + tdpGpu);
+
+Passo 4: Interpretação dos resultados
+Os booleanos retornados determinam o fluxo de exibição: configurações com
+incompatibilidades devem ser sinalizadas ao usuário com mensagem descritiva.
+
+──────────────────────────────────────────────────────────────────────────────
+E.5 Quais são as limitações do Sistema Especialista implementado e como poderiam
+    ser superadas?
+
+Limitação 1 — Cobertura parcial das regras de compatibilidade:
+O sistema atual verifica três dimensões de compatibilidade (socket, memória e
+potência). Existem outras dimensões relevantes não cobertas: compatibilidade
+de velocidade de memória (XMP/EXPO), limite de TDP suportado pela placa-mãe
+(VRM), compatibilidade de tamanho físico (form factor ATX, Micro-ATX, Mini-ITX),
+e capacidade máxima de RAM suportada.
+Solução: Ampliar o módulo compatibility.js com novas funções e enriquecer os
+objetos no components.json com os atributos correspondentes.
+
+Limitação 2 — Ausência de raciocínio encadeado (forward chaining):
+O sistema atual aplica cada regra de forma independente, sem encadeamento entre
+conclusões intermediárias. Um sistema especialista mais sofisticado poderia usar
+uma conclusão de uma regra como premissa de outra.
+Solução: Implementar um motor de inferência simples com encadeamento, onde a
+verificação de compatibilidade de socket (Regra 1) desabilita automaticamente
+as verificações subsequentes em caso de falha.
+
+Limitação 3 — Base de regras estática:
+As regras estão codificadas diretamente nas funções JavaScript. Para adicionar
+uma nova regra, é necessário modificar o código-fonte.
+Solução: Mover as regras para um arquivo regras.json, criando um motor de
+inferência genérico que leia e execute as regras dinamicamente. Isso separaria
+completamente a base de conhecimento do mecanismo de inferência, característica
+fundamental dos sistemas especialistas clássicos.
+
+──────────────────────────────────────────────────────────────────────────────
+E.6 Como a solução de IA Generativa (Google Gemini) complementa o Sistema
+    Especialista?
+
+Os Sistemas Especialistas baseados em regras são excelentes para raciocínio
+determinístico em domínios fechados e bem definidos, mas apresentam dificuldade
+em lidar com entradas em linguagem natural não estruturada. A API Google Gemini,
+por sua vez, é excelente para interpretar linguagem natural e gerar respostas
+contextualizadas, mas não oferece garantias formais de correção lógica.
+
+No PC Builder AI, essa complementaridade é explorada da seguinte forma:
+
+- O Sistema Especialista (compatibility.js) é responsável pelas verificações
+  binárias e formais: compatibilidade ou incompatibilidade. Não há ambiguidade
+  nessas verificações.
+
+- O Modelo Gemini é responsável pela interpretação do objetivo do usuário
+  (linguagem natural) e pela otimização multiobjetivo (maximizar performance
+  dentro do orçamento, considerando o uso pretendido). Tarefas que não se
+  encaixam em regras IF-THEN simples.
+
+Essa divisão de responsabilidades reflete um princípio importante em Engenharia
+de Sistemas de IA: utilizar a ferramenta mais adequada para cada tipo de tarefa.
+Regras determinísticas para verificações formais; modelos probabilísticos para
+tarefas que envolvem interpretação e contexto.
+
+================================================================================
+FIM DO DOCUMENTO
+================================================================================
+
+Documento elaborado em conformidade com a NBR 14724:2011 (ABNT — Informação e
+documentação: trabalhos acadêmicos — apresentação) e as normas institucionais
+da Pontifícia Universidade Católica de Campinas.
+
+Campinas, abril de 2026.
