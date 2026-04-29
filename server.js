@@ -13,7 +13,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const app = express();
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'DELETE'], allowedHeaders: ['Content-Type'] }));
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
@@ -158,6 +162,7 @@ app.get('/api/status', (req, res) => {
 app.post('/api/cadastro', verificarBanco, async (req, res) => {
     try {
         const { email, senha, nome } = req.body;
+        
         if (!email || !senha) return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha são obrigatórios.' });
         if (!EMAIL_REGEX.test(email.trim())) return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail inválido.' });
         if (senha.length < 8) return res.status(400).json({ sucesso: false, mensagem: 'A senha deve ter pelo menos 8 caracteres.' });
@@ -271,7 +276,7 @@ async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
 }
 
 // ============================================
-// ROTA: BUILD COMPLETA
+// ROTA: BUILD COMPLETA (scraping + IA + e-mail)
 // ============================================
 app.post('/api/build', async (req, res) => {
     try {
@@ -289,7 +294,6 @@ app.post('/api/build', async (req, res) => {
             await salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada: resultado.buildRecomendada });
         }
 
-        // Registra log de scraping por loja
         if (resultado.statusEtapas?.scraping?.lojas) {
             for (const [loja, info] of Object.entries(resultado.statusEtapas.scraping.lojas)) {
                 await registrarScrapingLog(objetivo, loja, info.sucesso, info.preco, info.erro);
@@ -309,17 +313,24 @@ app.post('/api/build', async (req, res) => {
 app.post('/api/gemini', async (req, res) => {
     try {
         const { contents } = req.body;
-        if (!contents) return res.status(400).json({ error: 'Campo "contents" obrigatório.' });
+        if (!contents) {
+            return res.status(400).json({ error: 'Campo "contents" obrigatório.' });
+        }
 
         const mistralKey = process.env.MISTRAL_API_KEY;
-        if (!mistralKey) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no servidor.' });
+        if (!mistralKey) {
+            return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no servidor.' });
+        }
 
         const userText = contents.flatMap(c => c.parts.map(p => p.text)).join('\n');
         const resposta = await axios.post('https://api.mistral.ai/v1/chat/completions', {
             model: 'mistral-small-latest',
             messages: [{ role: 'user', content: userText }]
         }, {
-            headers: { 'Authorization': `Bearer ${mistralKey}`, 'Content-Type': 'application/json' }
+            headers: {
+                'Authorization': `Bearer ${mistralKey}`,
+                'Content-Type': 'application/json'
+            }
         });
 
         const texto = resposta.data.choices[0].message.content;
@@ -341,6 +352,7 @@ app.post('/api/enviar-email', async (req, res) => {
         if (!emailDestino || !EMAIL_REGEX.test(emailDestino.trim())) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
         }
+
         const orcamentoFmt = Number(orcamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const assunto = `Sua Build PC — ${objetivo || 'Configuração Personalizada'}`;
         const htmlBody = `<!DOCTYPE html>
@@ -393,19 +405,26 @@ app.get('*', (req, res) => {
 // ============================================
 // INICIAR
 // ============================================
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3001;
 
 const servidor = app.listen(PORT, () => {
     console.log('');
     console.log('===========================================');
     console.log('  PC Builder AI — Servidor Online');
     console.log(`  URL: http://localhost:${PORT}`);
+    console.log(`  Builder:   http://localhost:${PORT}/pages/builder.html`);
+    console.log(`  Resultado: http://localhost:${PORT}/pages/resultado.html`);
     console.log('===========================================');
+    console.log('');
 });
 
 servidor.on('error', erro => {
-    if (erro.code === 'EADDRINUSE') console.error(`ERRO: Porta ${PORT} em uso.`);
-    else console.error('Erro ao iniciar servidor:', erro.message);
+    if (erro.code === 'EADDRINUSE') {
+        console.error(`ERRO: Porta ${PORT} já está em uso!`);
+        console.error(`Mude PORT no arquivo .env para outra porta.`);
+    } else {
+        console.error('Erro ao iniciar servidor:', erro.message);
+    }
     process.exit(1);
 });
 
