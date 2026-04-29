@@ -3,11 +3,7 @@ const { formatBRL, currentBRTimestamp } = require('../../../utils/formatter');
 /**
  * Gera o HTML do template Tipo 1 — apenas lojas brasileiras confiáveis.
  */
-<<<<<<< HEAD
 function renderTemplateLojasBR({ objetivo, buildRecomendada }) {
-=======
-function renderTemplateLojasBR({ objetivo, buildRecomendada, linkPagamento }) {
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
   const { configuracao, totalGasto, economia, resumoGeral } = buildRecomendada;
 
   const lojasBR = ['KaBuM!', 'Amazon BR', 'Pichau', 'Terabyte Shop'];
@@ -44,11 +40,6 @@ function renderTemplateLojasBR({ objetivo, buildRecomendada, linkPagamento }) {
     })
     .join('');
 
-<<<<<<< HEAD
-=======
-  const secaoPagamento = '';
-
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -113,11 +104,6 @@ function renderTemplateLojasBR({ objetivo, buildRecomendada, linkPagamento }) {
       </div>
     </div>
 
-<<<<<<< HEAD
-=======
-    ${secaoPagamento}
-
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     <!-- Rodapé -->
     <div style="text-align:center;padding:16px 0;border-top:1px solid #1e293b;">
       <p style="color:#475569;font-size:11px;margin:0;">

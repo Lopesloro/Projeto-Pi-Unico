@@ -73,10 +73,6 @@ async function processarBuild({ orcamento, objetivo, emailDestino, tipoEmail }) 
       tipoEmail: tipoEmail || 'lojas-br',
       buildRecomendada,
       precosScraping,
-<<<<<<< HEAD
-=======
-      linkPagamento: null,
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     });
     statusEtapas.email = { ok: true, timestamp: new Date().toISOString() };
   } catch (erroEmail) {

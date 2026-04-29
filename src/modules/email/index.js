@@ -100,10 +100,6 @@ async function enviarEmail({ emailDestino, assunto, htmlBody }) {
  * @param {'lojas-br'|'menor-preco'} params.tipoEmail
  * @param {object} params.buildRecomendada
  * @param {object} params.precosScraping
-<<<<<<< HEAD
-=======
- * @param {string|null} params.linkPagamento
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
  */
 async function enviarEmailBuild({
   emailDestino,
@@ -111,23 +107,14 @@ async function enviarEmailBuild({
   tipoEmail,
   buildRecomendada,
   precosScraping,
-<<<<<<< HEAD
-=======
-  linkPagamento,
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 }) {
   const { totalGasto } = buildRecomendada;
   const assunto = `Sua Build Personalizada — ${objetivo} por R$${totalGasto.toFixed(0)}`;
 
   const htmlBody =
     tipoEmail === 'menor-preco'
-<<<<<<< HEAD
       ? renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping })
       : renderTemplateLojasBR({ objetivo, buildRecomendada });
-=======
-      ? renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping, linkPagamento })
-      : renderTemplateLojasBR({ objetivo, buildRecomendada, linkPagamento });
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
   return enviarEmail({ emailDestino, assunto, htmlBody });
 }

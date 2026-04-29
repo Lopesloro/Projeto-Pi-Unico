@@ -18,7 +18,6 @@
       "Bash(tasklist)",
       "Bash(taskkill /F /PID 79352 /PID 81888)",
       "PowerShell(Stop-Process *)",
-<<<<<<< HEAD
       "Bash(xargs grep *)",
       "Bash(kill %1)",
       "Bash(pkill -f \"node server.js\")",
@@ -31,10 +30,9 @@
       "Bash(rmdir \"C:/Users/betem/Downloads/Projeto-Pi-Unico-main/src/modules/payment\")",
       "Bash(mysql --version)",
       "Read(//c/Program Files/MySQL/**)",
-      "Read(//c/Program Files/MySQL/MySQL Server 8.0/**)"
-=======
-      "Bash(xargs grep *)"
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+      "Read(//c/Program Files/MySQL/MySQL Server 8.0/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

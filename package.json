@@ -29,20 +29,12 @@
   "dependencies": {
     "axios": "^1.15.2",
     "bcryptjs": "^2.4.3",
-<<<<<<< HEAD
-=======
-    "better-sqlite3": "^11.0.0",
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
     "mysql2": "^3.22.2",
-<<<<<<< HEAD
-=======
-    "node-sqlite3-wasm": "^0.8.56",
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     "openai": "^4.104.0",
     "puppeteer": "^22.15.0"
   },

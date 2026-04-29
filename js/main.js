@@ -10,10 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPrev        = document.getElementById('btn-prev');
     const pcForm         = document.getElementById('pc-form');
     const progressBar    = document.getElementById('progress-bar');
-<<<<<<< HEAD
-=======
-    const currentStepText= document.getElementById('current-step');
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     const inputOrcamento = document.getElementById('orcamento');
     const errorOrcamento = document.getElementById('error-orcamento');
     const inputObjetivo  = document.getElementById('objetivo');
@@ -36,10 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         step1.classList.remove('active');
         step2.classList.add('active');
         progressBar.style.width = '100%';
-<<<<<<< HEAD
-=======
-        currentStepText.innerText = '2';
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     });
 
     // Passo 2 → Passo 1
@@ -47,10 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         step2.classList.remove('active');
         step1.classList.add('active');
         progressBar.style.width = '50%';
-<<<<<<< HEAD
-=======
-        currentStepText.innerText = '1';
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     });
 
     // Submissão → Chama a IA
@@ -70,13 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Esconde formulário, mostra loading
         pcForm.style.display = 'none';
         document.querySelector('.progress-container').style.display = 'none';
-<<<<<<< HEAD
         const stepIndicator = document.querySelector('.step-indicator');
         if (stepIndicator) stepIndicator.style.display = 'none';
         document.getElementById('steps-visual').style.display = 'none';
-=======
-        document.querySelector('.step-indicator').style.display = 'none';
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
         const loadingScreen = document.getElementById('loading-screen');
         const loadingText   = document.getElementById('loading-text');
@@ -90,10 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             '✨ Finalizando a sua montagem...'
         ];
         let idx = 0;
-<<<<<<< HEAD
         loadingText.innerText = mensagens[0];
-=======
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
         const intervalo = setInterval(() => {
             idx++;
             if (idx < mensagens.length) loadingText.innerText = mensagens[idx];
@@ -109,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Separa IDs dos componentes do HTML da recomendação
             const { ids, html } = parseRespostaIA(respostaIA);
 
-<<<<<<< HEAD
             // ──────────────────────────────────────────────
             // ENFORCER DE ORÇAMENTO (REGRA OBRIGATÓRIA)
             // O total da build NUNCA pode passar do valor do cliente.
@@ -124,13 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('pcBuilderAjustado',   enforce.ajustado ? '1' : '0');
             sessionStorage.setItem('pcBuilderEnforceMsg', enforce.mensagem || '');
             sessionStorage.setItem('pcBuilderTotal',      String(enforce.total || 0));
-=======
-            // Persiste tudo no sessionStorage para a página de resultado
-            sessionStorage.setItem('pcBuilderResposta',  html);
-            sessionStorage.setItem('pcBuilderIds',       JSON.stringify(ids));
-            sessionStorage.setItem('pcBuilderOrcamento', orcamento);
-            sessionStorage.setItem('pcBuilderObjetivo',  textoObjetivo);
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
             clearInterval(intervalo);
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
