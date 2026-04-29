@@ -156,7 +156,7 @@ async function inicializarBanco() {
 
 function verificarBanco(req, res, next) {
     if (!pool) return res.status(503).json({ sucesso: false, mensagem: 'Banco de dados indisponível.' });
-=======
+
 // BANCO DE DADOS (MySQL)
 // ============================================
 let db;
