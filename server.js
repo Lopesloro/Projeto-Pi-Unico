@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-<<<<<<< HEAD
+
 const mysql   = require('mysql2/promise');
 const cors    = require('cors');
 const path    = require('path');
@@ -15,7 +15,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const app = express();
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'DELETE'], allowedHeaders: ['Content-Type'] }));
-=======
+
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
@@ -35,12 +35,12 @@ app.use(cors({
     allowedHeaders: ['Content-Type']
 }));
 
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // ============================================
-<<<<<<< HEAD
+
 // BANCO DE DADOS (MySQL 8)
 // ============================================
 let pool;
@@ -200,7 +200,7 @@ function verificarBanco(req, res, next) {
             mensagem: 'Banco de dados indisponivel.'
         });
     }
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
     next();
 }
 
@@ -208,7 +208,7 @@ function verificarBanco(req, res, next) {
 // ROTA: STATUS
 // ============================================
 app.get('/api/status', (req, res) => {
-<<<<<<< HEAD
+
     res.json({ servidor: 'online', banco: pool ? 'conectado' : 'desconectado', timestamp: new Date().toISOString() });
 });
 
@@ -236,13 +236,13 @@ app.post('/api/cadastro', verificarBanco, async (req, res) => {
         console.error('Erro no cadastro:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao criar a conta.' });
     }
-=======
+
     res.json({
         servidor: 'online',
         banco: db ? 'conectado' : 'desconectado',
         timestamp: new Date().toISOString()
     });
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
 });
 
 // ============================================
@@ -270,7 +270,7 @@ app.post('/api/login', verificarBanco, async (req, res) => {
         }
     } catch (erro) {
         console.error('Erro no login:', erro.message);
-=======
+
 
         if (!email || !senha) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha sao obrigatorios.' });
@@ -298,13 +298,13 @@ app.post('/api/login', verificarBanco, async (req, res) => {
 
     } catch (erro) {
         console.error('Erro no login:', erro);
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         res.status(500).json({ sucesso: false, mensagem: 'Erro interno no servidor.' });
     }
 });
 
 // ============================================
-<<<<<<< HEAD
+
 // ROTA: HISTÓRICO DE BUILDS DO USUÁRIO
 // ============================================
 app.get('/api/historico', verificarBanco, async (req, res) => {
@@ -329,7 +329,7 @@ app.get('/api/historico', verificarBanco, async (req, res) => {
     } catch (erro) {
         console.error('Erro no histórico:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar histórico.' });
-=======
+
 // ROTA: CADASTRO
 // ============================================
 app.post('/api/cadastro', verificarBanco, async (req, res) => {
@@ -372,12 +372,12 @@ app.post('/api/cadastro', verificarBanco, async (req, res) => {
     } catch (erro) {
         console.error('Erro no cadastro:', erro);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao criar a conta.' });
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
     }
 });
 
 // ============================================
-<<<<<<< HEAD
+
 // FUNÇÃO: SALVAR BUILD + LOG DE SCRAPING
 // ============================================
 async function salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada }) {
@@ -417,16 +417,16 @@ async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
 // ROTA: BUILD COMPLETA
 =======
 // ROTA: BUILD COMPLETA (scraping + IA + e-mail)
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
 // ============================================
 app.post('/api/build', async (req, res) => {
     try {
         const { orcamento, objetivo, emailDestino, tipoEmail } = req.body;
-<<<<<<< HEAD
+
         if (!orcamento || !objetivo || !emailDestino) {
             return res.status(400).json({ sucesso: false, mensagem: 'Campos obrigatórios: orcamento, objetivo, emailDestino.' });
         }
-=======
+
 
         if (!orcamento || !objetivo || !emailDestino) {
             return res.status(400).json({
@@ -435,12 +435,11 @@ app.post('/api/build', async (req, res) => {
             });
         }
 
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         if (typeof orcamento !== 'number' || orcamento <= 0) {
             return res.status(400).json({ sucesso: false, mensagem: 'O orçamento deve ser um número positivo.' });
         }
 
-<<<<<<< HEAD
         const resultado = await processarBuild({ orcamento, objetivo, emailDestino, tipoEmail: tipoEmail || 'lojas-br' });
 
         if (resultado.buildRecomendada) {
@@ -457,7 +456,7 @@ app.post('/api/build', async (req, res) => {
         res.status(resultado.sucesso ? 200 : 207).json(resultado);
     } catch (erro) {
         console.error('Erro no endpoint /api/build:', erro.message);
-=======
+
         const resultado = await processarBuild({
             orcamento,
             objetivo,
@@ -469,22 +468,22 @@ app.post('/api/build', async (req, res) => {
         res.status(statusHttp).json(resultado);
     } catch (erro) {
         console.error('Erro no endpoint /api/build:', erro);
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         res.status(500).json({ sucesso: false, mensagem: 'Erro interno ao processar a build.' });
     }
 });
 
 // ============================================
-<<<<<<< HEAD
+
 // ROTA: PROXY IA (Mistral)
 =======
 // ROTA: PROXY IA (Mistral — chave fica no servidor)
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
 // ============================================
 app.post('/api/gemini', async (req, res) => {
     try {
         const { contents } = req.body;
-<<<<<<< HEAD
+
         if (!contents) return res.status(400).json({ error: 'Campo "contents" obrigatório.' });
 
         const mistralKey = process.env.MISTRAL_API_KEY;
@@ -503,27 +502,27 @@ app.post('/api/gemini', async (req, res) => {
 
         const userText = contents.flatMap(c => c.parts.map(p => p.text)).join('\n');
 
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         const resposta = await axios.post('https://api.mistral.ai/v1/chat/completions', {
             model: 'mistral-small-latest',
             messages: [{ role: 'user', content: userText }]
         }, {
-<<<<<<< HEAD
+
             headers: { 'Authorization': `Bearer ${mistralKey}`, 'Content-Type': 'application/json' }
-=======
+
             headers: {
                 'Authorization': `Bearer ${mistralKey}`,
                 'Content-Type': 'application/json'
             }
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         });
 
         const texto = resposta.data.choices[0].message.content;
         res.json({ candidates: [{ content: { parts: [{ text: texto }] } }] });
-<<<<<<< HEAD
-=======
 
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
+
+
     } catch (erro) {
         const status = erro.response?.status || 500;
         const data   = erro.response?.data  || { error: 'Erro ao conectar com a Mistral API.' };
@@ -533,16 +532,16 @@ app.post('/api/gemini', async (req, res) => {
 });
 
 // ============================================
-<<<<<<< HEAD
+
 // ROTA: ENVIAR E-MAIL
 =======
 // ROTA: ENVIAR E-MAIL (Gmail API)
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
 // ============================================
 app.post('/api/enviar-email', async (req, res) => {
     try {
         const { emailDestino, orcamento, objetivo, configuracaoHTML } = req.body;
-<<<<<<< HEAD
+
         if (!emailDestino || !EMAIL_REGEX.test(emailDestino.trim())) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
         }
@@ -567,7 +566,7 @@ app.post('/api/enviar-email', async (req, res) => {
         res.json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
     } catch (erro) {
         console.error('Erro em /api/enviar-email:', erro.message);
-=======
+
 
         if (!emailDestino || !emailDestino.includes('@')) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
@@ -593,7 +592,7 @@ app.post('/api/enviar-email', async (req, res) => {
         res.json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
     } catch (erro) {
         console.error('Erro em /api/enviar-email:', erro);
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
+
         res.status(500).json({ sucesso: false, mensagem: erro.message || 'Erro ao enviar e-mail.' });
     }
 });
@@ -602,7 +601,7 @@ app.post('/api/enviar-email', async (req, res) => {
 // ROTA: COMPONENTES
 // ============================================
 app.get('/api/componentes', (req, res) => {
-<<<<<<< HEAD
+
     const filePath = path.join(__dirname, 'data', 'components.json');
     fs.readFile(filePath, 'utf8', (erro, data) => {
         if (erro) return res.status(500).json({ erro: 'Falha ao carregar lista de componentes.' });
@@ -644,7 +643,7 @@ inicializarBanco().then(() => {
     console.error('Falha fatal ao iniciar banco:', err.message);
     process.exit(1);
 });
-=======
+
     try {
         const componentes = require(path.join(__dirname, 'data', 'components.json'));
         res.json(componentes);
@@ -697,4 +696,3 @@ inicializarBanco()
         console.error('Falha ao conectar ao MySQL:', err.message);
         process.exit(1);
     });
->>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
