@@ -30,7 +30,11 @@ function buildPrompt(orcamento, objetivo, precosScraping) {
   return `
 Você é um especialista sênior em hardware de computadores, focado em custo-benefício para o mercado brasileiro.
 
+<<<<<<< HEAD
 🚨 ORÇAMENTO DO CLIENTE (LIMITE INVIOLÁVEL): ${formatBRL(orcamento)}
+=======
+ORÇAMENTO DO USUÁRIO: ${formatBRL(orcamento)}
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 OBJETIVO: ${objetivo}
 
 PREÇOS REAIS COLETADOS DAS LOJAS:
@@ -40,12 +44,16 @@ TAREFA:
 Monte a melhor configuração de PC possível respeitando o orçamento informado.
 Componentes obrigatórios: CPU, GPU (ou integrado se orçamento for restrito), RAM, SSD, Placa-mãe, Fonte, Gabinete, Cooler.
 
+<<<<<<< HEAD
 🚨 REGRA #1 — O VALOR DO CLIENTE É O TETO ABSOLUTO 🚨
 A soma dos "preco" de TODOS os componentes (totalGasto) DEVE ser ≤ ${formatBRL(orcamento)}.
 NUNCA, EM HIPÓTESE NENHUMA, entregue uma build cujo totalGasto ultrapasse ${formatBRL(orcamento)}.
 Antes de responder, calcule o total e confirme que cabe. Se não couber, troque por opções mais baratas.
 
 DEMAIS REGRAS:
+=======
+REGRAS:
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 1. Use APENAS produtos e preços da lista acima (não invente produtos).
 2. Respeite compatibilidade: socket CPU = socket placa-mãe; tipo RAM (DDR4/DDR5) = suportado pela placa-mãe.
 3. Dimensione a fonte: (TDP_CPU + TDP_GPU) × 1.3 de margem mínima.
@@ -128,6 +136,7 @@ async function recomendarBuild({ orcamento, objetivo, precosScraping }) {
   const prompt = buildPrompt(orcamento, objetivo, precosScraping);
   logger.info('IA: enviando prompt para GPT-4o', { orcamento, objetivo });
 
+<<<<<<< HEAD
   const tentarChamada = async (mensagemExtra) => {
     const messages = [{ role: 'user', content: prompt }];
     if (mensagemExtra) messages.push({ role: 'user', content: mensagemExtra });
@@ -186,6 +195,32 @@ async function recomendarBuild({ orcamento, objetivo, precosScraping }) {
   }
 
   buildRecomendada.dentroOrcamento = buildRecomendada.totalGasto <= orcamento;
+=======
+  const completion = await openaiClient.chat.completions.create({
+    model: config.openai.model,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.3,
+    max_tokens: 2000,
+    response_format: { type: 'json_object' },
+  });
+
+  const conteudo = completion.choices[0]?.message?.content;
+  if (!conteudo) {
+    throw new Error('GPT-4o retornou resposta vazia.');
+  }
+
+  logger.debug('IA: resposta recebida do GPT-4o', { tokens: completion.usage?.total_tokens });
+
+  const buildRecomendada = parseRespostaIA(conteudo);
+
+  // Garante que o totalGasto esteja calculado caso a IA não calcule corretamente
+  if (!buildRecomendada.totalGasto) {
+    buildRecomendada.totalGasto = buildRecomendada.configuracao
+      .filter((c) => c.disponivel !== false)
+      .reduce((acc, c) => acc + (c.preco || 0), 0);
+  }
+
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
   buildRecomendada.economia = Math.max(0, orcamento - buildRecomendada.totalGasto);
 
   return buildRecomendada;

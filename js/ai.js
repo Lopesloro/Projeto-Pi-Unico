@@ -8,12 +8,17 @@ async function consultarIA(orcamento, objetivo, estoque) {
     const prompt = `
 Você é um especialista em montagem de computadores com anos de experiência no mercado brasileiro.
 Um cliente precisa de ajuda com:
+<<<<<<< HEAD
 - 💰 ORÇAMENTO MÁXIMO (LIMITE INVIOLÁVEL): R$ ${orcamento}
+=======
+- Orçamento máximo: R$ ${orcamento}
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 - Objetivo/Uso: "${objetivo}"
 
 Estoque disponível (JSON):
 ${JSON.stringify(estoque)}
 
+<<<<<<< HEAD
 🚨 REGRA #1 — ORÇAMENTO É LIMITE ABSOLUTO 🚨
 O VALOR INFORMADO PELO CLIENTE (R$ ${orcamento}) É O TETO MÁXIMO ABSOLUTO DA BUILD.
 A SOMA dos "preco" de CPU + GPU + Placa-Mãe + RAM + Fonte + Armazenamento
@@ -24,12 +29,18 @@ Se não couber, troque peças por modelos mais baratos do MESMO JSON até caber.
 Se nem assim couber, REMOVA a GPU e use uma CPU com video_integrado=true.
 
 DEMAIS REGRAS OBRIGATÓRIAS:
+=======
+REGRAS OBRIGATÓRIAS:
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 1. Use SOMENTE peças do JSON acima. NUNCA invente peças ou IDs que não existam.
 2. GARANTA compatibilidade: socket da CPU deve ser IGUAL ao socket da placa-mãe; tipo da RAM deve ser IGUAL ao tipo_memoria da placa-mãe.
 3. A fonte deve ter potencia_w suficiente: pelo menos (tdp_cpu + tdp_gpu) * 1.2 watts.
 4. Se o orçamento for baixo, priorize os componentes essenciais (CPU, placa-mãe, RAM, armazenamento). GPU é opcional se a CPU tiver video_integrado.
 5. Escolha a melhor custo-benefício dentro do orçamento.
+<<<<<<< HEAD
 6. Aproveite o orçamento — fique o mais perto possível do teto sem ultrapassá-lo.
+=======
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
 FORMATO DE RESPOSTA — siga EXATAMENTE este padrão, sem nenhum texto antes ou depois:
 
@@ -38,13 +49,21 @@ cpu:[ID_EXATO_DO_PROCESSADOR],gpu:[ID_EXATO_DA_GPU_ou_null],mobo:[ID_EXATO_DA_PL
 ##HTML##
 [AQUI VAI SUA RECOMENDAÇÃO COMPLETA USANDO APENAS TAGS HTML VÁLIDAS: h3, ul, li, strong, p]
 [Explique por que escolheu cada peça, considerando o objetivo do cliente]
+<<<<<<< HEAD
 [Termine com um parágrafo de resumo da build, SEM mencionar valor total — o total será calculado automaticamente pelo sistema]
+=======
+[Na última linha, destaque o VALOR TOTAL em um parágrafo com a tag <strong>]
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 ##FIM##
 
 REGRAS DO HTML:
 - PROIBIDO usar Markdown (*, **, #, ##). Use SOMENTE tags HTML.
 - Organize por seções: h3 para cada categoria (Processador, Memória, etc.)
+<<<<<<< HEAD
 - NÃO inclua valor total ou preços no HTML — apenas a justificativa técnica de cada escolha.
+=======
+- Termine com um parágrafo de resumo e o valor total em destaque.
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 `;
 
     try {

@@ -9,6 +9,7 @@ const logger = require('../../utils/logger');
 const LOJA = 'Pichau';
 const BASE_URL = 'https://www.pichau.com.br';
 
+<<<<<<< HEAD
 // API GraphQL da Pichau (mais confiável que scraping HTML)
 const GRAPHQL_URL = 'https://www.pichau.com.br/api/pichau';
 const GRAPHQL_QUERY = `
@@ -59,6 +60,13 @@ async function scrapePichau(componenteNome) {
       }
 
       // Fallback: HTML via __NEXT_DATA__
+=======
+async function scrapePichau(componenteNome) {
+  const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(sanitizeSearchQuery(componenteNome))}`;
+
+  return withRetry(
+    async () => {
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
       const { data: html } = await axios.get(searchUrl, {
         headers: HTTP_HEADERS,
         timeout: config.scraper.timeoutMs,
@@ -66,6 +74,7 @@ async function scrapePichau(componenteNome) {
 
       const $ = cheerio.load(html);
 
+<<<<<<< HEAD
       const nextDataRaw = $('script#__NEXT_DATA__').html();
       if (nextDataRaw) {
         try {
@@ -105,13 +114,46 @@ async function scrapePichau(componenteNome) {
         (found, sel) => found || ($(sel).first().length ? $(sel).first() : null),
         null
       );
+=======
+      // Pichau usa Next.js — extrai dados do __NEXT_DATA__ (mais confiável que HTML)
+      const nextDataRaw = $('script#__NEXT_DATA__').html();
+      if (nextDataRaw) {
+        const nextData = JSON.parse(nextDataRaw);
+        const products =
+          nextData?.props?.pageProps?.searchResult?.products ||
+          nextData?.props?.pageProps?.products ||
+          [];
+
+        if (products.length > 0) {
+          const first = products[0];
+          const precoRaw = first.price?.final_price || first.price?.special_price || first.price?.regular_price;
+
+          if (precoRaw) {
+            const preco = typeof precoRaw === 'string' ? extractPriceFromText(precoRaw) : precoRaw;
+            const slug = first.url_key || first.sku || '';
+            const url = slug ? `${BASE_URL}/${slug}` : searchUrl;
+
+            logger.debug(`${LOJA}: "${first.name}" R$${preco}`);
+            return buildDisponivel(first.name, preco, LOJA, url, componenteNome);
+          }
+        }
+      }
+
+      // Fallback: parse HTML direto
+      const cardSeletores = ['.MuiCard-root', '.product-card', '[class*="ProductCard"]'];
+      const card = cardSeletores.reduce((found, sel) => found || ($(sel).first().length ? $(sel).first() : null), null);
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
       if (!card) {
         logger.warn(`${LOJA}: sem resultado para "${componenteNome}"`);
         return buildIndisponivel(componenteNome, LOJA, searchUrl);
       }
 
+<<<<<<< HEAD
       const nome = card.find('h2, h3, [class*="name"], [class*="title"]').first().text().trim();
+=======
+      const nome = card.find('h2, h3, [class*="name"]').first().text().trim();
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
       const preco = extractPriceFromText(card.find('[class*="price"], [class*="Price"]').first().text());
       const href = card.find('a').first().attr('href') || '';
 

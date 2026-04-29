@@ -3,7 +3,11 @@ const { formatBRL, currentBRTimestamp } = require('../../../utils/formatter');
 /**
  * Gera o HTML do template Tipo 2 — menor preço incluindo AliExpress.
  */
+<<<<<<< HEAD
 function renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping }) {
+=======
+function renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping, linkPagamento }) {
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
   const { configuracao, totalGasto, economia, resumoGeral } = buildRecomendada;
 
   // Identifica a maior economia vs AliExpress para destaque visual
@@ -78,6 +82,11 @@ function renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping }
       </div>`
       : '';
 
+<<<<<<< HEAD
+=======
+  const secaoPagamento = '';
+
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -152,6 +161,11 @@ function renderTemplateMenorPreco({ objetivo, buildRecomendada, precosScraping }
       </div>
     </div>
 
+<<<<<<< HEAD
+=======
+    ${secaoPagamento}
+
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     <!-- Rodapé -->
     <div style="text-align:center;padding:16px 0;border-top:1px solid #1e293b;">
       <p style="color:#475569;font-size:11px;margin:0;">

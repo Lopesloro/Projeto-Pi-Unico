@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>Montar PC — PC Builder AI</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
@@ -292,10 +293,36 @@
     </div>
 
     <!-- Formulário -->
+=======
+    <title>Montar PC - PC Builder AI</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>PC Builder <span class="ai-text">AI</span></h1>
+    <p>A inteligência artificial que monta seu setup perfeito 🚀</p>
+</header>
+
+<main>
+<section class="builder-container">
+
+    <!-- Barra de progresso -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <p class="step-indicator">
+        Passo <span id="current-step">1</span> de 2
+    </p>
+
+    <!-- Formulário de montagem -->
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     <form id="pc-form">
 
         <!-- STEP 1: Orçamento -->
         <div class="form-step active" id="step-1">
+<<<<<<< HEAD
             <h2>Defina seu orçamento</h2>
 
             <div class="form-group">
@@ -329,11 +356,24 @@
 
             <button type="button" class="btn btn-next" id="btn-next" style="margin-top:2rem;">
                 Próximo →
+=======
+            <h2>💰 Defina seu orçamento</h2>
+
+            <div class="form-group">
+                <label for="orcamento">Quanto você quer investir? (R$)</label>
+                <input type="number" id="orcamento" placeholder="Ex: 5000" min="1500">
+                <span class="error-msg" id="error-orcamento">Orçamento mínimo: R$ 1.500</span>
+            </div>
+
+            <button type="button" class="btn btn-next" id="btn-next">
+                Avançar ➔
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
             </button>
         </div>
 
         <!-- STEP 2: Objetivo -->
         <div class="form-step" id="step-2">
+<<<<<<< HEAD
             <h2>Qual o objetivo do PC?</h2>
 
             <div class="form-group">
@@ -353,12 +393,25 @@
 
             <div class="button-group" style="margin-top:2rem;">
                 <button type="button" class="btn btn-prev" id="btn-prev">← Voltar</button>
+=======
+            <h2>🎯 Qual o objetivo do PC?</h2>
+
+            <div class="form-group">
+                <label for="objetivo">Descreva o uso que você pretende fazer:</label>
+                <textarea id="objetivo" rows="4" placeholder="Ex: Quero jogar jogos pesados como GTA V e editar vídeos no Premiere..."></textarea>
+                <span class="error-msg" id="error-objetivo">Preencha corretamente</span>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-prev" id="btn-prev">🠔 Voltar</button>
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
                 <button type="submit" class="btn btn-submit">Gerar com IA ✨</button>
             </div>
         </div>
 
     </form>
 
+<<<<<<< HEAD
     <!-- Loading -->
     <div id="loading-screen" class="hidden">
         <div class="loading-content">
@@ -379,11 +432,18 @@
                 </div>
             </div>
         </div>
+=======
+    <!-- Tela de Loading -->
+    <div id="loading-screen" class="hidden">
+        <div class="spinner"></div>
+        <h3 id="loading-text">🔍 Analisando seu objetivo...</h3>
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
     </div>
 
 </section>
 </main>
 
+<<<<<<< HEAD
 <script src="../js/ai.js"></script>
 <script src="../js/budget-enforcer.js"></script>
 <script src="../js/main.js"></script>
@@ -447,6 +507,11 @@
         }, 3500);
     }
 </script>
+=======
+<!-- Scripts: AI + Main (nesta ordem!) -->
+<script src="../js/ai.js"></script>
+<script src="../js/main.js"></script>
+>>>>>>> 618b7376aa19224b5993fd2f9b1071ebf2b98ae7
 
 </body>
 </html>
