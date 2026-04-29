@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-
 const mysql   = require('mysql2/promise');
 const cors    = require('cors');
 const path    = require('path');
@@ -14,23 +13,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const app = express();
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'DELETE'], allowedHeaders: ['Content-Type'] }));
-
-// ============================================
-// MIDDLEWARES
-// ============================================
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['Content-Type']
 }));
-
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // ============================================
-
 // BANCO DE DADOS (MySQL 8)
 // ============================================
 let pool;
@@ -156,41 +148,6 @@ async function inicializarBanco() {
 
 function verificarBanco(req, res, next) {
     if (!pool) return res.status(503).json({ sucesso: false, mensagem: 'Banco de dados indisponível.' });
-
-// BANCO DE DADOS (MySQL)
-// ============================================
-let db;
-
-async function inicializarBanco() {
-    db = await mysql.createConnection({
-        host:     process.env.MYSQL_HOST     || '127.0.0.1',
-        port:     parseInt(process.env.MYSQL_PORT) || 3306,
-        user:     process.env.MYSQL_USER     || 'root',
-        password: process.env.MYSQL_PASSWORD || '',
-        database: process.env.MYSQL_DATABASE || 'Pc_Builder_Unico',
-    });
-
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS Usuarios (
-            Id          INT AUTO_INCREMENT PRIMARY KEY,
-            Email       VARCHAR(255) NOT NULL UNIQUE,
-            Senha       VARCHAR(255) NOT NULL,
-            DataCriacao DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    console.log('Banco MySQL conectado:', process.env.MYSQL_DATABASE);
-    console.log('Tabela "Usuarios" verificada/criada.');
-}
-
-function verificarBanco(req, res, next) {
-    if (!db) {
-        return res.status(503).json({
-            sucesso: false,
-            mensagem: 'Banco de dados indisponivel.'
-        });
-    }
-
     next();
 }
 
@@ -198,7 +155,6 @@ function verificarBanco(req, res, next) {
 // ROTA: STATUS
 // ============================================
 app.get('/api/status', (req, res) => {
-
     res.json({ servidor: 'online', banco: pool ? 'conectado' : 'desconectado', timestamp: new Date().toISOString() });
 });
 
@@ -208,6 +164,7 @@ app.get('/api/status', (req, res) => {
 app.post('/api/cadastro', verificarBanco, async (req, res) => {
     try {
         const { email, senha, nome } = req.body;
+        
         if (!email || !senha) return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha são obrigatórios.' });
         if (!EMAIL_REGEX.test(email.trim())) return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail inválido.' });
         if (senha.length < 8) return res.status(400).json({ sucesso: false, mensagem: 'A senha deve ter pelo menos 8 caracteres.' });
@@ -226,13 +183,6 @@ app.post('/api/cadastro', verificarBanco, async (req, res) => {
         console.error('Erro no cadastro:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao criar a conta.' });
     }
-
-    res.json({
-        servidor: 'online',
-        banco: db ? 'conectado' : 'desconectado',
-        timestamp: new Date().toISOString()
-    });
-
 });
 
 // ============================================
@@ -260,41 +210,11 @@ app.post('/api/login', verificarBanco, async (req, res) => {
         }
     } catch (erro) {
         console.error('Erro no login:', erro.message);
-
-
-        if (!email || !senha) {
-            return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha sao obrigatorios.' });
-        }
-
-        if (!email.includes('@')) {
-            return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail invalido.' });
-        }
-
-        const [rows] = await db.execute(
-            'SELECT Id, Email, Senha FROM Usuarios WHERE Email = ?',
-            [email.trim()]
-        );
-        const usuario = rows[0];
-
-        if (usuario && bcrypt.compareSync(senha, usuario.Senha)) {
-            res.json({
-                sucesso: true,
-                mensagem: 'Login efetuado com sucesso!',
-                usuario: { id: usuario.Id, email: usuario.Email }
-            });
-        } else {
-            res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha invalidos.' });
-        }
-
-    } catch (erro) {
-        console.error('Erro no login:', erro);
-
         res.status(500).json({ sucesso: false, mensagem: 'Erro interno no servidor.' });
     }
 });
 
 // ============================================
-
 // ROTA: HISTÓRICO DE BUILDS DO USUÁRIO
 // ============================================
 app.get('/api/historico', verificarBanco, async (req, res) => {
@@ -319,55 +239,10 @@ app.get('/api/historico', verificarBanco, async (req, res) => {
     } catch (erro) {
         console.error('Erro no histórico:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar histórico.' });
-
-// ROTA: CADASTRO
-// ============================================
-app.post('/api/cadastro', verificarBanco, async (req, res) => {
-    try {
-        const { email, senha } = req.body;
-
-        if (!email || !senha) {
-            return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha sao obrigatorios.' });
-        }
-
-        if (!email.includes('@')) {
-            return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail invalido.' });
-        }
-
-        if (senha.length < 8) {
-            return res.status(400).json({ sucesso: false, mensagem: 'A senha deve ter pelo menos 8 caracteres.' });
-        }
-
-        const [existe] = await db.execute(
-            'SELECT Id FROM Usuarios WHERE Email = ?',
-            [email.trim()]
-        );
-
-        if (existe[0]) {
-            return res.status(409).json({ sucesso: false, mensagem: 'Este e-mail ja esta cadastrado!' });
-        }
-
-        const hash = bcrypt.hashSync(senha, 10);
-        const [resultado] = await db.execute(
-            'INSERT INTO Usuarios (Email, Senha) VALUES (?, ?)',
-            [email.trim(), hash]
-        );
-
-        res.status(201).json({
-            sucesso: true,
-            mensagem: 'Conta criada com sucesso!',
-            usuario: { id: resultado.insertId, email: email.trim() }
-        });
-
-    } catch (erro) {
-        console.error('Erro no cadastro:', erro);
-        res.status(500).json({ sucesso: false, mensagem: 'Erro ao criar a conta.' });
-
     }
 });
 
 // ============================================
-
 // FUNÇÃO: SALVAR BUILD + LOG DE SCRAPING
 // ============================================
 async function salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada }) {
@@ -404,10 +279,7 @@ async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
 }
 
 // ============================================
-// ROTA: BUILD COMPLETA
-=======
 // ROTA: BUILD COMPLETA (scraping + IA + e-mail)
-
 // ============================================
 app.post('/api/build', async (req, res) => {
     try {
@@ -416,15 +288,6 @@ app.post('/api/build', async (req, res) => {
         if (!orcamento || !objetivo || !emailDestino) {
             return res.status(400).json({ sucesso: false, mensagem: 'Campos obrigatórios: orcamento, objetivo, emailDestino.' });
         }
-
-
-        if (!orcamento || !objetivo || !emailDestino) {
-            return res.status(400).json({
-                sucesso: false,
-                mensagem: 'Campos obrigatórios: orcamento, objetivo, emailDestino.'
-            });
-        }
-
 
         if (typeof orcamento !== 'number' || orcamento <= 0) {
             return res.status(400).json({ sucesso: false, mensagem: 'O orçamento deve ser um número positivo.' });
@@ -436,7 +299,6 @@ app.post('/api/build', async (req, res) => {
             await salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada: resultado.buildRecomendada });
         }
 
-        // Registra log de scraping por loja
         if (resultado.statusEtapas?.scraping?.lojas) {
             for (const [loja, info] of Object.entries(resultado.statusEtapas.scraping.lojas)) {
                 await registrarScrapingLog(objetivo, loja, info.sucesso, info.preco, info.erro);
@@ -446,41 +308,17 @@ app.post('/api/build', async (req, res) => {
         res.status(resultado.sucesso ? 200 : 207).json(resultado);
     } catch (erro) {
         console.error('Erro no endpoint /api/build:', erro.message);
-
-        const resultado = await processarBuild({
-            orcamento,
-            objetivo,
-            emailDestino,
-            tipoEmail: tipoEmail || 'lojas-br',
-        });
-
-        const statusHttp = resultado.sucesso ? 200 : 207;
-        res.status(statusHttp).json(resultado);
-    } catch (erro) {
-        console.error('Erro no endpoint /api/build:', erro);
-
         res.status(500).json({ sucesso: false, mensagem: 'Erro interno ao processar a build.' });
     }
 });
 
 // ============================================
-
 // ROTA: PROXY IA (Mistral)
-=======
-// ROTA: PROXY IA (Mistral — chave fica no servidor)
-
 // ============================================
 app.post('/api/gemini', async (req, res) => {
     try {
         const { contents } = req.body;
 
-        if (!contents) return res.status(400).json({ error: 'Campo "contents" obrigatório.' });
-
-        const mistralKey = process.env.MISTRAL_API_KEY;
-        if (!mistralKey) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no servidor.' });
-
-        const userText = contents.flatMap(c => c.parts.map(p => p.text)).join('\n');
-=======
         if (!contents) {
             return res.status(400).json({ error: 'Campo "contents" obrigatório.' });
         }
@@ -492,26 +330,18 @@ app.post('/api/gemini', async (req, res) => {
 
         const userText = contents.flatMap(c => c.parts.map(p => p.text)).join('\n');
 
-
         const resposta = await axios.post('https://api.mistral.ai/v1/chat/completions', {
             model: 'mistral-small-latest',
             messages: [{ role: 'user', content: userText }]
         }, {
-
-            headers: { 'Authorization': `Bearer ${mistralKey}`, 'Content-Type': 'application/json' }
-
             headers: {
                 'Authorization': `Bearer ${mistralKey}`,
                 'Content-Type': 'application/json'
             }
-
         });
 
         const texto = resposta.data.choices[0].message.content;
         res.json({ candidates: [{ content: { parts: [{ text: texto }] } }] });
-
-
-
 
     } catch (erro) {
         const status = erro.response?.status || 500;
@@ -522,43 +352,13 @@ app.post('/api/gemini', async (req, res) => {
 });
 
 // ============================================
-
 // ROTA: ENVIAR E-MAIL
-=======
-// ROTA: ENVIAR E-MAIL (Gmail API)
-
 // ============================================
 app.post('/api/enviar-email', async (req, res) => {
     try {
         const { emailDestino, orcamento, objetivo, configuracaoHTML } = req.body;
 
         if (!emailDestino || !EMAIL_REGEX.test(emailDestino.trim())) {
-            return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
-        }
-        const orcamentoFmt = Number(orcamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const assunto = `Sua Build PC — ${objetivo || 'Configuração Personalizada'}`;
-        const htmlBody = `<!DOCTYPE html>
-<html lang="pt-BR">
-<body style="font-family:Inter,sans-serif;background:#070810;color:#e2e8f0;padding:2rem;max-width:700px;margin:0 auto;">
-  <div style="background:linear-gradient(135deg,#0d1117,#111827);border:1px solid rgba(0,212,255,0.15);border-radius:16px;padding:2rem;">
-    <h1 style="background:linear-gradient(135deg,#00d4ff,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:1.8rem;margin-bottom:0.5rem;">PC Builder AI</h1>
-    <p style="color:#64748b;margin-bottom:2rem;">Sua configuração personalizada</p>
-    <p><strong style="color:#00d4ff;">Orçamento:</strong> <span style="color:#e2e8f0;">${orcamentoFmt}</span></p>
-    <p><strong style="color:#00d4ff;">Objetivo:</strong> <span style="color:#e2e8f0;">${objetivo || ''}</span></p>
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.5rem 0;">
-    ${configuracaoHTML || ''}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:1.5rem 0;">
-    <p style="color:#475569;font-size:0.82rem;">Gerado por PC Builder AI — Projeto Integrador 26 / PUC Campinas</p>
-  </div>
-</body>
-</html>`;
-        await enviarEmail({ emailDestino, assunto, htmlBody });
-        res.json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
-    } catch (erro) {
-        console.error('Erro em /api/enviar-email:', erro.message);
-
-
-        if (!emailDestino || !emailDestino.includes('@')) {
             return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
         }
 
@@ -574,15 +374,14 @@ app.post('/api/enviar-email', async (req, res) => {
   <hr style="border-color:#334155;margin:1.5rem 0;">
   ${configuracaoHTML || ''}
   <hr style="border-color:#334155;margin:1.5rem 0;">
-  <p style="color:#94a3b8;font-size:0.85rem;">Gerado por PC Builder AI — Projeto Integrador 26 / PUC Campinas</p>
+  <p style="color:#94a3b8;font-size:0.85rem;">Gerado por PC Builder AI — Projeto Integrador / PUC Campinas</p>
 </body>
 </html>`;
 
         await enviarEmail({ emailDestino, assunto, htmlBody });
         res.json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
     } catch (erro) {
-        console.error('Erro em /api/enviar-email:', erro);
-
+        console.error('Erro em /api/enviar-email:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: erro.message || 'Erro ao enviar e-mail.' });
     }
 });
@@ -591,49 +390,6 @@ app.post('/api/enviar-email', async (req, res) => {
 // ROTA: COMPONENTES
 // ============================================
 app.get('/api/componentes', (req, res) => {
-
-    const filePath = path.join(__dirname, 'data', 'components.json');
-    fs.readFile(filePath, 'utf8', (erro, data) => {
-        if (erro) return res.status(500).json({ erro: 'Falha ao carregar lista de componentes.' });
-        try {
-            res.json(JSON.parse(data));
-        } catch (_) {
-            res.status(500).json({ erro: 'Falha ao processar lista de componentes.' });
-        }
-    });
-});
-
-// ============================================
-// FALLBACK
-// ============================================
-app.get('*', (req, res) => {
-    const filePath = path.join(__dirname, req.path);
-    res.sendFile(filePath, err => { if (err) res.sendFile(path.join(__dirname, 'index.html')); });
-});
-
-// ============================================
-// INICIAR
-// ============================================
-const PORT = process.env.PORT || 3003;
-
-inicializarBanco().then(() => {
-    const servidor = app.listen(PORT, () => {
-        console.log('');
-        console.log('===========================================');
-        console.log('  PC Builder AI — Servidor Online');
-        console.log(`  URL: http://localhost:${PORT}`);
-        console.log('===========================================');
-    });
-    servidor.on('error', erro => {
-        if (erro.code === 'EADDRINUSE') console.error(`ERRO: Porta ${PORT} em uso. Encerre o processo e tente novamente.`);
-        else console.error('Erro ao iniciar servidor:', erro.message);
-        process.exit(1);
-    });
-}).catch(err => {
-    console.error('Falha fatal ao iniciar banco:', err.message);
-    process.exit(1);
-});
-
     try {
         const componentes = require(path.join(__dirname, 'data', 'components.json'));
         res.json(componentes);
@@ -644,7 +400,7 @@ inicializarBanco().then(() => {
 });
 
 // ============================================
-// FALLBACK: index.html
+// FALLBACK (Serve as páginas HTML)
 // ============================================
 app.get('*', (req, res) => {
     const filePath = path.join(__dirname, req.path);
@@ -663,18 +419,19 @@ inicializarBanco()
         const servidor = app.listen(PORT, () => {
             console.log('');
             console.log('===========================================');
-            console.log('PC Builder AI - Servidor Rodando!');
-            console.log(`URL: http://localhost:${PORT}`);
+            console.log('  PC Builder AI - Servidor Rodando! 🚀');
+            console.log(`  URL: http://localhost:${PORT}`);
             console.log('===========================================');
-            console.log(`Login:     http://localhost:${PORT}/`);
-            console.log(`Builder:   http://localhost:${PORT}/pages/builder.html`);
-            console.log(`Resultado: http://localhost:${PORT}/pages/resultado.html`);
+            console.log(`  Login:     http://localhost:${PORT}/`);
+            console.log(`  Builder:   http://localhost:${PORT}/pages/builder.html`);
+            console.log(`  Resultado: http://localhost:${PORT}/pages/resultado.html`);
+            console.log('===========================================');
             console.log('');
         });
 
         servidor.on('error', (erro) => {
             if (erro.code === 'EADDRINUSE') {
-                console.error(`ERRO: Porta ${PORT} ja esta em uso!`);
+                console.error(`ERRO: Porta ${PORT} já está em uso!`);
                 console.error(`Mude PORT=${PORT} para PORT=${parseInt(PORT) + 1} no arquivo .env`);
             } else {
                 console.error('Erro ao iniciar servidor:', erro.message);
@@ -683,6 +440,6 @@ inicializarBanco()
         });
     })
     .catch(err => {
-        console.error('Falha ao conectar ao MySQL:', err.message);
+        console.error('Falha fatal ao iniciar banco:', err.message);
         process.exit(1);
     });
