@@ -2,6 +2,45 @@
 // MAIN.JS - Lógica principal do Builder
 // ============================================
 
+// Mapeamento de categorias -> rótulo exibido + campo no estoque
+const CATEGORIAS_HTML = [
+    { key: 'cpu',     label: 'Processador',      campo: 'processadores' },
+    { key: 'mobo',    label: 'Placa-Mãe',        campo: 'placas_mae'    },
+    { key: 'ram',     label: 'Memória RAM',      campo: 'memorias'      },
+    { key: 'gpu',     label: 'Placa de Vídeo',   campo: 'placas_video'  },
+    { key: 'storage', label: 'Armazenamento',    campo: 'armazenamento' },
+    { key: 'fonte',   label: 'Fonte',            campo: 'fontes'        }
+];
+
+// Reconstrói o HTML de recomendação a partir dos IDs finais (pós-enforcer),
+// preservando o resumo final original da IA quando possível.
+function construirHTMLRecomendacao(ids, estoque, htmlOriginal) {
+    const partes = [];
+    partes.push('<p><em>⚙️ Esta build foi otimizada automaticamente para caber no seu orçamento.</em></p>');
+
+    for (const cat of CATEGORIAS_HTML) {
+        const id = ids[cat.key];
+        if (!id || id === 'null') {
+            if (cat.key === 'gpu') {
+                partes.push('<h3>Placa de Vídeo</h3><p>Não incluída nesta configuração — o processador escolhido tem vídeo integrado, suficiente para o uso pretendido dentro do orçamento.</p>');
+            }
+            continue;
+        }
+        const peca = (estoque[cat.campo] || []).find(p => p.id === id);
+        if (!peca) continue;
+        partes.push(`<h3>${cat.label}</h3><p><strong>${peca.nome}</strong> — escolha equilibrada para o objetivo do cliente, respeitando compatibilidade e orçamento.</p>`);
+    }
+
+    // Tenta extrair um parágrafo de resumo do HTML original da IA (último <p>)
+    const resumoMatch = (htmlOriginal || '').match(/<p[^>]*>([\s\S]*?)<\/p>(?![\s\S]*<p)/i);
+    const resumo = resumoMatch
+        ? `<p>${resumoMatch[1]}</p>`
+        : '<p>Configuração balanceada que entrega o melhor desempenho possível para o uso informado, sem ultrapassar o orçamento.</p>';
+    partes.push(resumo);
+
+    return partes.join('\n');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const step1          = document.getElementById('step-1');
@@ -96,8 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // ──────────────────────────────────────────────
             const enforce = aplicarLimiteOrcamento(ids, estoque, Number(orcamento));
 
+            // Se o enforcer trocou peças, regenera o HTML para refletir as peças finais
+            // (evita divergência entre Recomendação da IA e Tabela de Preços).
+            const htmlFinal = enforce.ajustado
+                ? construirHTMLRecomendacao(enforce.ids, estoque, html)
+                : html;
+
             // Persiste tudo no sessionStorage para a página de resultado
-            sessionStorage.setItem('pcBuilderResposta',   html);
+            sessionStorage.setItem('pcBuilderResposta',   htmlFinal);
             sessionStorage.setItem('pcBuilderIds',        JSON.stringify(enforce.ids));
             sessionStorage.setItem('pcBuilderOrcamento',  orcamento);
             sessionStorage.setItem('pcBuilderObjetivo',   textoObjetivo);

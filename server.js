@@ -26,24 +26,10 @@ app.use(express.static(path.join(__dirname)));
 // ============================================
 let pool;
 
-async function inicializarBanco() {
-    pool = mysql.createPool({
-        host:               process.env.MYSQL_HOST     || 'localhost',
-        port:               parseInt(process.env.MYSQL_PORT) || 3306,
-        user:               process.env.MYSQL_USER     || 'root',
-        password:           process.env.MYSQL_PASSWORD || '',
-        database:           process.env.MYSQL_DATABASE || 'Pc_Builder_Unico',
-        waitForConnections: true,
-        connectionLimit:    10,
-        queueLimit:         0,
-    });
-
-    const conn = await pool.getConnection();
-    try {
-        console.log('✅ Conexão com MySQL estabelecida.');
-
-        // Tabela Usuarios
-        await conn.execute(`
+const TABELAS = [
+    {
+        nome: 'Usuarios',
+        sql: `
             CREATE TABLE IF NOT EXISTS Usuarios (
                 Id          INT          AUTO_INCREMENT PRIMARY KEY,
                 Email       VARCHAR(255) NOT NULL UNIQUE,
@@ -52,32 +38,11 @@ async function inicializarBanco() {
                 DataCriacao TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
                 UltimoLogin TIMESTAMP    NULL DEFAULT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-
-        // Garante coluna UltimoLogin se tabela já existia
-        const [cols] = await conn.execute(`
-            SELECT COUNT(*) AS existe FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME   = 'Usuarios'
-              AND COLUMN_NAME  = 'UltimoLogin'
-        `);
-        if (cols[0].existe === 0) {
-            await conn.execute(`ALTER TABLE Usuarios ADD COLUMN UltimoLogin TIMESTAMP NULL DEFAULT NULL`);
-        }
-
-        // Garante coluna Nome se tabela já existia
-        const [colsNome] = await conn.execute(`
-            SELECT COUNT(*) AS existe FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME   = 'Usuarios'
-              AND COLUMN_NAME  = 'Nome'
-        `);
-        if (colsNome[0].existe === 0) {
-            await conn.execute(`ALTER TABLE Usuarios ADD COLUMN Nome VARCHAR(150) NULL AFTER Senha`);
-        }
-
-        // Tabela Builds
-        await conn.execute(`
+        `
+    },
+    {
+        nome: 'Builds',
+        sql: `
             CREATE TABLE IF NOT EXISTS Builds (
                 Id           INT           AUTO_INCREMENT PRIMARY KEY,
                 EmailDestino VARCHAR(255)  NOT NULL,
@@ -89,10 +54,11 @@ async function inicializarBanco() {
                 DataCriacao  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_email (EmailDestino)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-
-        // Tabela BuildComponentes
-        await conn.execute(`
+        `
+    },
+    {
+        nome: 'BuildComponentes',
+        sql: `
             CREATE TABLE IF NOT EXISTS BuildComponentes (
                 Id            INT           AUTO_INCREMENT PRIMARY KEY,
                 BuildId       INT           NOT NULL,
@@ -106,10 +72,11 @@ async function inicializarBanco() {
                 FOREIGN KEY (BuildId) REFERENCES Builds(Id) ON DELETE CASCADE,
                 INDEX idx_build (BuildId)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-
-        // Tabela ScrapingLog
-        await conn.execute(`
+        `
+    },
+    {
+        nome: 'ScrapingLog',
+        sql: `
             CREATE TABLE IF NOT EXISTS ScrapingLog (
                 Id         INT           AUTO_INCREMENT PRIMARY KEY,
                 Componente VARCHAR(255)  NOT NULL,
@@ -121,10 +88,11 @@ async function inicializarBanco() {
                 INDEX idx_loja (Loja),
                 INDEX idx_data (DataHora)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-
-        // Tabela Sessoes
-        await conn.execute(`
+        `
+    },
+    {
+        nome: 'Sessoes',
+        sql: `
             CREATE TABLE IF NOT EXISTS Sessoes (
                 Id        INT          AUTO_INCREMENT PRIMARY KEY,
                 UsuarioId INT          NOT NULL,
@@ -134,10 +102,81 @@ async function inicializarBanco() {
                 FOREIGN KEY (UsuarioId) REFERENCES Usuarios(Id) ON DELETE CASCADE,
                 INDEX idx_token (Token)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
+        `
+    }
+];
+
+async function inicializarBanco() {
+    const dbHost     = process.env.MYSQL_HOST     || 'localhost';
+    const dbPort     = parseInt(process.env.MYSQL_PORT) || 3306;
+    const dbUser     = process.env.MYSQL_USER     || 'root';
+    const dbPassword = process.env.MYSQL_PASSWORD || '';
+    const dbName     = process.env.MYSQL_DATABASE || 'Pc_Builder_Unico';
+
+    // 1) Conecta SEM database para garantir que ele exista
+    const bootstrap = await mysql.createConnection({
+        host: dbHost, port: dbPort, user: dbUser, password: dbPassword
+    });
+    await bootstrap.query(
+        `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+    await bootstrap.end();
+    console.log(`✅ Database "${dbName}" garantido.`);
+
+    // 2) Pool já apontando para o database
+    pool = mysql.createPool({
+        host: dbHost, port: dbPort, user: dbUser, password: dbPassword,
+        database: dbName,
+        waitForConnections: true,
+        connectionLimit:    10,
+        queueLimit:         0,
+    });
+
+    const conn = await pool.getConnection();
+    try {
+        console.log('✅ Conexão com MySQL estabelecida.');
+
+        // 3) Cria cada tabela em try/catch isolado — se uma falhar, as outras continuam
+        const criadas = [];
+        const falhas  = [];
+        for (const tabela of TABELAS) {
+            try {
+                await conn.query(tabela.sql);
+                criadas.push(tabela.nome);
+            } catch (errTab) {
+                falhas.push({ nome: tabela.nome, erro: errTab.message });
+                console.error(`❌ Falha ao criar tabela ${tabela.nome}:`, errTab.message);
+            }
+        }
+
+        // 4) Garante colunas extras em Usuarios (caso tabela já existisse com schema antigo)
+        try {
+            const [cols] = await conn.query(`
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Usuarios'
+            `);
+            const nomesCols = cols.map(c => c.COLUMN_NAME);
+            if (!nomesCols.includes('UltimoLogin')) {
+                await conn.query(`ALTER TABLE Usuarios ADD COLUMN UltimoLogin TIMESTAMP NULL DEFAULT NULL`);
+            }
+            if (!nomesCols.includes('Nome')) {
+                await conn.query(`ALTER TABLE Usuarios ADD COLUMN Nome VARCHAR(150) NULL AFTER Senha`);
+            }
+        } catch (errAlter) {
+            console.warn('⚠️  Erro ao verificar colunas extras:', errAlter.message);
+        }
+
+        // 5) Lista o que existe no banco para confirmação
+        const [tabelasExistentes] = await conn.query(`SHOW TABLES`);
+        const lista = tabelasExistentes.map(r => Object.values(r)[0]);
+        console.log(`✅ Tabelas no banco "${dbName}": ${lista.join(', ') || '(nenhuma)'}`);
+        if (falhas.length > 0) {
+            console.warn(`⚠️  ${falhas.length} tabela(s) falharam:`, falhas);
+        } else {
+            console.log(`✅ Todas as ${criadas.length} tabelas verificadas/criadas com sucesso.`);
+        }
 
         conn.release();
-        console.log('✅ Todas as tabelas verificadas/criadas com sucesso.');
     } catch (err) {
         conn.release();
         throw err;
