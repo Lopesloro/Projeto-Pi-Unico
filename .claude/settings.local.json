@@ -32,7 +32,12 @@
       "Read(//c/Program Files/MySQL/**)",
       "Read(//c/Program Files/MySQL/MySQL Server 8.0/**)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(npm audit *)",
+      "Bash(npm ci *)",
+      "Bash(grep -rn \"^=======$\" . --include=\"*.js\" --include=\"*.html\" --include=\"*.css\" --include=\"*.json\" --include=\"*.sql\")",
+      "Bash(grep -v *)",
+      "Bash(grep -rn *)"
     ]
   }
 }
