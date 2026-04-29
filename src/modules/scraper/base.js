@@ -1,5 +1,14 @@
 const puppeteer = require('puppeteer');
+const { execSync } = require('child_process');
 const config = require('../../config');
+
+function _getExecutablePath() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  for (const bin of ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable']) {
+    try { return execSync(`which ${bin}`).toString().trim(); } catch (_) {}
+  }
+  return undefined;
+}
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -17,9 +26,11 @@ const HTTP_HEADERS = {
  * @param {string[]} extraArgs - Args adicionais de launch (ex: ['--lang=pt-BR'])
  */
 async function criarPaginaPuppeteer(extraArgs = []) {
+  const executablePath = _getExecutablePath();
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', ...extraArgs],
+    ...(executablePath && { executablePath }),
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', ...extraArgs],
   });
 
   const page = await browser.newPage();

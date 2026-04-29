@@ -385,7 +385,8 @@ app.get('/api/componentes', (req, res) => {
 // FALLBACK
 // ============================================
 app.get('*', (req, res) => {
-    const filePath = path.join(__dirname, req.path);
+    const filePath = path.resolve(__dirname, req.path.slice(1));
+    if (!filePath.startsWith(__dirname)) return res.sendFile(path.join(__dirname, 'index.html'));
     res.sendFile(filePath, err => { if (err) res.sendFile(path.join(__dirname, 'index.html')); });
 });
 
