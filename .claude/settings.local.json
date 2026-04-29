@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm start *)",
+      "Bash(node -e \"require\\('better-sqlite3'\\)\")",
+      "Bash(node -e \"require\\('better-sqlite3'\\); console.log\\('ok'\\)\")",
+      "Bash(timeout 5 node server.js)",
+      "Bash(del \"C:\\\\Users\\\\betem\\\\Downloads\\\\Projeto-Integrador26-CORRIGIDO \\(1\\)\\\\banco.db\")",
+      "Bash(cmd /c \"del \\\\\"C:\\\\Users\\\\betem\\\\Downloads\\\\Projeto-Integrador26-CORRIGIDO \\(1\\)\\\\banco.db\\\\\"\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); try{JSON.parse\\(fs.readFileSync\\('data/components.json','utf8'\\)\\); console.log\\('components.json OK'\\)}catch\\(e\\){console.error\\('ERRO JSON:',e.message\\)}\")",
+      "Bash(node -e ' *)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/api/status)",
+      "Bash(curl *)",
+      "Bash(node *)",
+      "Bash(npm --version)",
+      "Bash(tasklist)",
+      "Bash(taskkill /F /PID 79352 /PID 81888)",
+      "PowerShell(Stop-Process *)",
+      "Bash(xargs grep *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"node server.js\")",
+      "WebSearch",
+      "WebFetch(domain:www.kabum.com.br)",
+      "WebFetch(domain:www.pichau.com.br)",
+      "WebFetch(domain:www.terabyteshop.com.br)",
+      "WebFetch(domain:www.hardwarebarato.com)",
+      "Bash(rm \"C:/Users/betem/Downloads/Projeto-Pi-Unico-main/src/modules/payment/index.js\")",
+      "Bash(rmdir \"C:/Users/betem/Downloads/Projeto-Pi-Unico-main/src/modules/payment\")",
+      "Bash(mysql --version)",
+      "Read(//c/Program Files/MySQL/**)",
+      "Read(//c/Program Files/MySQL/MySQL Server 8.0/**)"
+    ]
+  }
+}

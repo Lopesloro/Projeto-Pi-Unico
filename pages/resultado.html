@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sua Build — PC Builder AI</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* NAV */
+        .app-nav {
+            width: 100%;
+            max-width: 880px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-nav-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-nav-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #94a3b8;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.09);
+            color: #f1f5f9;
+            border-color: rgba(255,255,255,0.14);
+        }
+
+        /* Resumo do pedido */
+        .build-summary {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 999px;
+            padding: 0.35rem 0.875rem;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .summary-chip strong { color: #f1f5f9; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 0.875rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            z-index: 200;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-ok  { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.25); color: #10b981; }
+        .toast-err { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.25);  color: #ef4444; }
+
+        /* Painel de orçamento (regra obrigatória) */
+        .budget-panel {
+            width: 100%;
+            max-width: 880px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(99,102,241,0.05));
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 14px;
+            padding: 1.1rem 1.3rem;
+            position: relative;
+            z-index: 1;
+        }
+        .budget-panel.over {
+            background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05));
+            border-color: rgba(239,68,68,0.4);
+        }
+        .budget-panel.adjusted {
+            background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(99,102,241,0.05));
+            border-color: rgba(234,179,8,0.35);
+        }
+        .budget-panel-header {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-weight: 700; font-size: 0.95rem; color: #f1f5f9;
+            margin-bottom: 0.6rem;
+        }
+        .budget-panel.over .budget-panel-header { color: #fca5a5; }
+        .budget-panel.adjusted .budget-panel-header { color: #fde68a; }
+        .budget-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+        .budget-cell {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 0.55rem 0.75rem;
+        }
+        .budget-cell-label {
+            display: block; font-size: 0.68rem; text-transform: uppercase;
+            color: #64748b; letter-spacing: 0.5px; margin-bottom: 0.15rem;
+        }
+        .budget-cell-value { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; }
+        .budget-cell-value.ok    { color: #10b981; }
+        .budget-cell-value.over  { color: #ef4444; }
+        .budget-bar-bg {
+            height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;
+        }
+        .budget-bar-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            transition: width 0.6s ease;
+        }
+        .budget-bar-fill.warn { background: linear-gradient(90deg, #eab308, #facc15); }
+        .budget-bar-fill.over { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .budget-msg {
+            margin-top: 0.55rem; font-size: 0.78rem; color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="app-nav">
+    <a class="app-nav-brand" href="../index.html">
+        <span>🖥️</span> PC Builder <span class="ai-text" style="font-size:inherit;">AI</span>
+    </a>
+    <div class="app-nav-actions">
+        <a class="nav-btn" href="builder.html">🔄 Nova build</a>
+        <button class="nav-btn" onclick="window.print()">🖨️ Salvar PDF</button>
+        <a class="nav-btn" href="../index.html">🚪 Sair</a>
+    </div>
+</nav>
+
+<!-- Chips de resumo -->
+<div class="build-summary" id="build-summary" style="width:100%;max-width:880px;position:relative;z-index:1;margin-bottom:1.5rem;"></div>
+
+<main class="resultado-main">
+
+    <!-- 1: RECOMENDAÇÃO DA IA -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">🤖</span>
+            <h2>Recomendação da IA</h2>
+        </div>
+        <div class="builder-container" style="max-width:100%;">
+            <div id="conteudo-ia">
+                <div style="text-align:center;padding:2rem 0;">
+                    <div class="spinner"></div>
+                    <p style="color:#475569;margin-top:0.5rem;font-size:0.875rem;">Carregando sua configuração...</p>
+                </div>
+            </div>
+            <div id="total-ia-card" style="display:none;margin-top:1.25rem;background:#0d2118;border:1px solid #10b981;border-radius:10px;padding:14px 20px;text-align:center;">
+                <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;text-transform:uppercase;">Total da Build (calculado)</p>
+                <p id="total-ia-valor" style="color:#10b981;font-size:22px;font-weight:700;margin:0;"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2: COMPATIBILIDADE -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">🔧</span>
+            <h2>Verificação de Compatibilidade</h2>
+            <span class="section-badge" id="compat-badge">Verificando...</span>
+        </div>
+        <div class="builder-container" style="max-width:100%;" id="compat-container">
+            <div style="text-align:center;padding:1.5rem;">
+                <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3: BOTTLENECK -->
+    <section class="resultado-section" id="bottleneck-section" style="display:none;">
+        <div class="section-header">
+            <span class="section-icon">📊</span>
+            <h2>Análise de Gargalo</h2>
+        </div>
+        <div class="builder-container" style="max-width:100%;padding:0;overflow:hidden;" id="bottleneck-container"></div>
+    </section>
+
+    <!-- 4: PREÇOS -->
+    <section class="resultado-section" id="precos-section" style="display:none;">
+        <div class="section-header">
+            <span class="section-icon">💰</span>
+            <h2>Comparativo de Preços</h2>
+        </div>
+        <div class="builder-container" style="max-width:100%;">
+            <p class="precos-info">💡 Preços consultados em lojas confiáveis do Brasil e no AliExpress. Clique nos links para ir direto à loja.</p>
+            <div class="precos-table-wrapper">
+                <table class="precos-table" id="precos-table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Componente</th>
+                            <th class="col-br">🇧🇷 Loja BR</th>
+                            <th class="col-ali">🛒 AliExpress</th>
+                            <th class="col-eco">💸 Economia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="precos-tbody"></tbody>
+                    <tfoot id="precos-tfoot"></tfoot>
+                </table>
+            </div>
+            <p class="precos-aviso">⚠️ Preços do AliExpress não incluem impostos de importação (até 20% + ICMS estadual). Calcule o custo real antes de comprar no exterior.</p>
+        </div>
+    </section>
+
+    <!-- 5: E-MAIL -->
+    <section class="resultado-section">
+        <div class="section-header">
+            <span class="section-icon">📧</span>
+            <h2>Receber por E-mail</h2>
+        </div>
+        <div class="builder-container" style="max-width:100%;">
+            <p class="email-desc">Salve esta configuração no seu e-mail para consultar depois ou compartilhar com quem vai montar o PC.</p>
+            <div class="email-input-group">
+                <input type="email" id="input-email-destino" placeholder="seuemail@exemplo.com" />
+                <button class="btn btn-email" id="btn-enviar-email" onclick="handleEnviarEmail()">
+                    Enviar ✉️
+                </button>
+            </div>
+            <p class="email-status" id="email-status"></p>
+        </div>
+    </section>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="../js/compatibility.js"></script>
+<script src="../js/email.js"></script>
+
+<script>
+// =============================================
+// HELPERS
+// =============================================
+function showToast(msg, tipo) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast toast-${tipo} show`;
+    setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// =============================================
+// DADOS DO SESSION STORAGE
+// =============================================
+const respostaHTML = sessionStorage.getItem('pcBuilderResposta');
+const idsRaw       = sessionStorage.getItem('pcBuilderIds');
+const orcamento    = sessionStorage.getItem('pcBuilderOrcamento') || '';
+const objetivo     = sessionStorage.getItem('pcBuilderObjetivo')  || '';
+let   ids          = {};
+
+try { ids = idsRaw ? JSON.parse(idsRaw) : {}; } catch(e) { ids = {}; }
+
+// Chips de resumo
+const summaryEl = document.getElementById('build-summary');
+if (orcamento) {
+    const oFmt = Number(orcamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    summaryEl.innerHTML = `
+        <div class="summary-chip">💰 Orçamento: <strong>${oFmt}</strong></div>
+        ${objetivo ? `<div class="summary-chip">🎯 Objetivo: <strong>${objetivo.slice(0,60)}${objetivo.length>60?'…':''}</strong></div>` : ''}
+    `;
+}
+
+// =============================================
+// SEÇÃO 1: RECOMENDAÇÃO DA IA
+// =============================================
+const conteudoIa = document.getElementById('conteudo-ia');
+
+if (respostaHTML) {
+    let html = respostaHTML
+        .replace(/```html\s*/gi, '').replace(/```\s*/gi, '')
+        .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+        .replace(/## (.*?)(\n|$)/g,  '<h3>$1</h3>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    conteudoIa.innerHTML = html;
+} else {
+    conteudoIa.innerHTML = `
+        <div style="text-align:center;padding:1.5rem 0;">
+            <p style="font-size:2rem;margin-bottom:0.75rem;">😕</p>
+            <h3 style="color:#ef4444;border:none;margin:0 0 0.5rem;">Nenhuma configuração encontrada</h3>
+            <p style="color:#64748b;background:none;border:none;padding:0;">
+                Volte para o formulário e gere uma nova recomendação.
+            </p>
+        </div>`;
+}
+
+// =============================================
+// SEÇÕES 2, 3, 4
+// =============================================
+async function carregarDadosExtras() {
+    const compatContainer     = document.getElementById('compat-container');
+    const compatBadge         = document.getElementById('compat-badge');
+    const bottleneckSection   = document.getElementById('bottleneck-section');
+    const bottleneckContainer = document.getElementById('bottleneck-container');
+
+    if (!idsRaw || Object.values(ids).every(v => !v)) {
+        compatContainer.innerHTML = `<p class="compat-aviso">⚠️ Não foi possível identificar os componentes automaticamente nesta consulta. Gere uma nova recomendação para ativar a verificação.</p>`;
+        compatBadge.textContent = 'N/A';
+        compatBadge.className   = 'section-badge badge-aviso';
+        return;
+    }
+
+    try {
+        const resp    = await fetch('../data/components.json');
+        const estoque = await resp.json();
+
+        const { resultados, bottleneck, cpu, gpu } = rodarTodasVerificacoes({
+            cpuId:   ids.cpu,
+            gpuId:   ids.gpu,
+            moboId:  ids.mobo,
+            ramId:   ids.ram,
+            fonteId: ids.fonte
+        }, estoque);
+
+        if (resultados.length === 0) {
+            compatContainer.innerHTML = `<p class="compat-aviso">Componentes não localizados no catálogo para verificação.</p>`;
+            compatBadge.textContent = 'N/A';
+            compatBadge.className   = 'section-badge badge-aviso';
+        } else {
+            const todosOk = resultados.every(r => r.ok);
+            compatBadge.textContent = todosOk ? '✅ Aprovado' : '⚠️ Atenção';
+            compatBadge.className   = `section-badge ${todosOk ? 'badge-ok' : 'badge-erro'}`;
+
+            compatContainer.innerHTML = `<div class="compat-lista">${
+                resultados.map(r => `
+                    <div class="compat-item ${r.ok ? 'compat-ok' : 'compat-erro'}">
+                        <span class="compat-icone">${r.ok ? '✅' : '❌'}</span>
+                        <div>
+                            <strong>${r.label}</strong>
+                            <p>${r.msg}</p>
+                        </div>
+                    </div>`).join('')
+            }</div>`;
+        }
+
+        if (bottleneck) {
+            bottleneckSection.style.display = 'block';
+            const bw = Math.min(bottleneck.percentual, 100);
+            bottleneckContainer.innerHTML = `
+                <div class="bottleneck-card" style="border-color:${bottleneck.cor};border-radius:14px;">
+                    <div class="bottleneck-header">
+                        <span class="bottleneck-nivel" style="color:${bottleneck.cor};">${bottleneck.titulo}</span>
+                        <span class="bottleneck-percentual" style="color:${bottleneck.cor};">${bottleneck.percentual}% de gargalo</span>
+                    </div>
+                    <div class="bottleneck-barra-bg">
+                        <div class="bottleneck-barra" style="width:${bw}%;background:${bottleneck.cor};box-shadow:0 0 10px ${bottleneck.cor}66;"></div>
+                    </div>
+                    <p class="bottleneck-desc">${bottleneck.descricao}</p>
+                    <div class="bottleneck-scores">
+                        <div class="score-item">
+                            <span class="score-label">🖥️ CPU Score</span>
+                            <span class="score-value">${bottleneck.cpuScore} / 10</span>
+                            <small>${cpu?.nome || ''}</small>
+                        </div>
+                        <div class="score-sep">vs</div>
+                        <div class="score-item">
+                            <span class="score-label">🎮 GPU Score</span>
+                            <span class="score-value">${bottleneck.gpuScore} / 10</span>
+                            <small>${gpu?.nome || ''}</small>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        carregarTabelaPrecos(estoque);
+
+    } catch (err) {
+        compatContainer.innerHTML = `<p class="compat-aviso">Erro ao carregar verificações. Verifique o console (F12).</p>`;
+        console.error('Erro em carregarDadosExtras:', err);
+    }
+}
+
+function carregarTabelaPrecos(estoque) {
+    const secao = document.getElementById('precos-section');
+    const tbody = document.getElementById('precos-tbody');
+    const tfoot = document.getElementById('precos-tfoot');
+
+    const categorias = [
+        { key: 'cpu',     label: '🖥️ Processador',   arr: estoque.processadores },
+        { key: 'gpu',     label: '🎮 Placa de Vídeo', arr: estoque.placas_video  },
+        { key: 'mobo',    label: '🔌 Placa-Mãe',      arr: estoque.placas_mae    },
+        { key: 'ram',     label: '💾 RAM',             arr: estoque.memorias      },
+        { key: 'fonte',   label: '⚡ Fonte',           arr: estoque.fontes        },
+        { key: 'storage', label: '💿 Armazenamento',   arr: estoque.armazenamento }
+    ];
+
+    let totalBR = 0, totalAli = 0, linhas = '', algum = false;
+
+    categorias.forEach(cat => {
+        const id   = ids[cat.key];
+        if (!id || id === 'null') return;
+        const item = cat.arr?.find(c => c.id === id);
+        if (!item) return;
+
+        algum = true;
+        const precoBR  = item.preco     || 0;
+        const precoAli = item.preco_ali || 0;
+        const economia = precoBR - precoAli;
+        const loja     = item.loja_br || 'Kabum';
+
+        totalBR  += precoBR;
+        totalAli += precoAli;
+
+        linhas += `
+            <tr>
+                <td><span class="cat-label">${cat.label}</span></td>
+                <td class="td-nome">${item.nome}</td>
+                <td class="col-br">
+                    <span class="preco-valor">${fmt(precoBR)}</span>
+                    <a href="${linkBR(loja, item.nome)}" target="_blank" rel="noopener noreferrer" class="loja-link">${loja} →</a>
+                </td>
+                <td class="col-ali">
+                    <span class="preco-valor preco-ali">${fmt(precoAli)}</span>
+                    <a href="${linkAli(item.nome)}" target="_blank" rel="noopener noreferrer" class="loja-link">AliExpress →</a>
+                </td>
+                <td class="col-eco"><span class="economia-valor">-${fmt(economia)}</span></td>
+            </tr>`;
+    });
+
+    if (!algum) return;
+
+    tbody.innerHTML = linhas;
+    tfoot.innerHTML = `
+        <tr class="tfoot-total">
+            <td colspan="2"><strong>TOTAL</strong></td>
+            <td class="col-br"><strong>${fmt(totalBR)}</strong></td>
+            <td class="col-ali"><strong>${fmt(totalAli)}</strong></td>
+            <td class="col-eco"><strong>-${fmt(totalBR - totalAli)}</strong></td>
+        </tr>`;
+    secao.style.display = 'block';
+
+    // Exibe o total real abaixo da Recomendação da IA
+    const totalIaCard  = document.getElementById('total-ia-card');
+    const totalIaValor = document.getElementById('total-ia-valor');
+    if (totalIaCard && totalIaValor) {
+        totalIaValor.textContent = fmt(totalBR);
+        totalIaCard.style.display = 'block';
+    }
+
+    // Monta tabela de links para incluir no e-mail
+    emailTotalBR = totalBR;
+    emailTabelaHTML = `
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:16px;">
+  <thead>
+    <tr style="background:#0f172a;">
+      <th style="padding:10px;text-align:left;color:#64748b;font-size:12px;">TIPO</th>
+      <th style="padding:10px;text-align:left;color:#64748b;font-size:12px;">PRODUTO</th>
+      <th style="padding:10px;text-align:left;color:#10b981;font-size:12px;">PREÇO</th>
+      <th style="padding:10px;text-align:left;color:#64748b;font-size:12px;">LINK</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${categorias.map(cat => {
+        const id = ids[cat.key];
+        if (!id || id === 'null') return '';
+        const item = cat.arr?.find(c => c.id === id);
+        if (!item) return '';
+        const loja = item.loja_br || 'Kabum';
+        const link = linkBR(loja, item.nome);
+        const preco = item.preco || 0;
+        return `
+    <tr style="border-bottom:1px solid #1e293b;">
+      <td style="padding:10px;color:#94a3b8;font-size:12px;font-weight:600;">${cat.label}</td>
+      <td style="padding:10px;color:#f1f5f9;font-size:12px;">${item.nome}</td>
+      <td style="padding:10px;color:#10b981;font-weight:700;font-size:13px;">${fmt(preco)}</td>
+      <td style="padding:10px;">
+        <a href="${link}" target="_blank" style="display:inline-block;padding:6px 12px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:5px;font-size:12px;font-weight:600;">
+          Comprar na ${loja} →
+        </a>
+      </td>
+    </tr>`;
+    }).join('')}
+  </tbody>
+  <tfoot>
+    <tr style="background:#0f172a;">
+      <td colspan="2" style="padding:12px 10px;color:#f1f5f9;font-weight:700;font-size:14px;">TOTAL</td>
+      <td style="padding:12px 10px;color:#10b981;font-weight:700;font-size:16px;">${fmt(totalBR)}</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>`;
+}
+
+function fmt(v) {
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function linkBR(loja, nome) {
+    const q = encodeURIComponent(nome);
+    if (loja === 'Kabum')    return `https://www.kabum.com.br/busca/${q}`;
+    if (loja === 'Pichau')   return `https://www.pichau.com.br/search?q=${q}`;
+    if (loja === 'Terabyte') return `https://www.terabyteshop.com.br/busca?str=${q}`;
+    return `https://www.kabum.com.br/busca/${q}`;
+}
+function linkAli(nome) {
+    return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(nome)}`;
+}
+
+// dados da tabela de preços para incluir no e-mail
+let emailTabelaHTML = '';
+let emailTotalBR = 0;
+
+// =============================================
+// SEÇÃO 5: E-MAIL
+// =============================================
+async function handleEnviarEmail() {
+    const input  = document.getElementById('input-email-destino');
+    const btn    = document.getElementById('btn-enviar-email');
+    const status = document.getElementById('email-status');
+    const email  = input.value.trim();
+
+    status.className   = 'email-status';
+    status.textContent = '';
+
+    try {
+        btn.disabled    = true;
+        btn.textContent = '⏳ Enviando...';
+
+        const tabelaLinks = emailTabelaHTML
+            ? `<div style="background:#1e293b;border-radius:10px;overflow:hidden;margin-top:20px;padding:0;">
+                <div style="padding:14px 20px;border-bottom:1px solid #334155;">
+                  <h2 style="color:#f1f5f9;margin:0;font-size:15px;">🛒 Links para Compra — KaBuM</h2>
+                </div>
+                <div style="overflow-x:auto;padding:0 8px 8px;">
+                  ${emailTabelaHTML}
+                </div>
+               </div>`
+            : '';
+        const corpoCompleto = (respostaHTML || '') + tabelaLinks;
+        await enviarOrcamentoPorEmail(email, orcamento, objetivo, corpoCompleto);
+
+        status.textContent = '✅ E-mail enviado! Verifique sua caixa de entrada.';
+        status.className   = 'email-status email-ok';
+        input.value        = '';
+        showToast('E-mail enviado com sucesso!', 'ok');
+    } catch (err) {
+        status.textContent = `❌ ${err.message || 'Erro ao enviar.'}`;
+        status.className   = 'email-status email-erro';
+        console.error('Erro ao enviar e-mail:', err);
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Enviar ✉️';
+    }
+}
+
+// INIT
+carregarDadosExtras();
+</script>
+
+</body>
+</html>

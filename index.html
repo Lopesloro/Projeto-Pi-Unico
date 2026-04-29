@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Builder AI — Monte o PC dos seus Sonhos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ================================================
+           INTRO SCREEN
+        ================================================ */
+        #intro-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        #intro-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #fff;
+            min-height: 1.2em;
+        }
+
+        #intro-title .ai-glow {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #intro-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1em;
+            background: #00d4ff;
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 0.7s step-end infinite;
+        }
+
+        #intro-sub {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+            color: #64748b;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        #intro-sub.visible { opacity: 1; }
+
+        #intro-bar {
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            border-radius: 2px;
+            transition: width 1s ease;
+            max-width: 320px;
+        }
+
+        #intro-screen.fade-out {
+            opacity: 0;
+            transition: opacity 0.7s ease;
+            pointer-events: none;
+        }
+
+        /* ================================================
+           LANDING PAGE RESET (body default já cuida do bg)
+        ================================================ */
+        body.landing-page {
+            padding: 0;
+            align-items: stretch;
+            overflow-x: hidden;
+        }
+
+        /* ================================================
+           NAVBAR
+        ================================================ */
+        .land-nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2.5rem;
+            background: rgba(7, 8, 16, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.07);
+            transition: all 0.3s;
+        }
+
+        .land-nav.scrolled {
+            padding: 0.75rem 2.5rem;
+            background: rgba(7, 8, 16, 0.97);
+        }
+
+        .land-nav-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-icon {
+            font-size: 1.4rem;
+            filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.4));
+        }
+
+        .land-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .land-nav-links a {
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: var(--transition);
+            letter-spacing: 0.01em;
+        }
+
+        .land-nav-links a:hover { color: var(--text); }
+
+        .land-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+        }
+
+        .btn-ghost-nav {
+            background: transparent;
+            border: 1px solid rgba(0, 212, 255, 0.18);
+            color: var(--text-2);
+            padding: 0.5rem 1.125rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-ghost-nav:hover {
+            background: rgba(0, 212, 255, 0.06);
+            border-color: rgba(0, 212, 255, 0.35);
+            color: var(--text);
+        }
+
+        .btn-primary-nav {
+            background: var(--gradient);
+            border: none;
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: var(--spring);
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2);
+        }
+
+        .btn-primary-nav:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3);
+        }
+
+        /* ================================================
+           HERO SECTION
+        ================================================ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 6rem 2.5rem 4rem;
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* ---- LEFT COLUMN ---- */
+        .hero-text { display: flex; flex-direction: column; align-items: flex-start; }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(0, 212, 255, 0.06);
+            border: 1px solid rgba(0, 212, 255, 0.18);
+            color: var(--cyan);
+            padding: 0.4rem 0.875rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.04em;
+            margin-bottom: 1.5rem;
+            animation: fadeInDown 0.6s ease both;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.6rem, 5vw, 3.75rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.6s ease 0.1s both;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-desc {
+            font-size: 1.05rem;
+            color: var(--text-2);
+            line-height: 1.75;
+            margin-bottom: 2.25rem;
+            max-width: 480px;
+            animation: fadeInUp 0.6s ease 0.2s both;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 0.875rem;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.6s ease 0.3s both;
+        }
+
+        .btn-hero-primary {
+            background: var(--gradient);
+            border: none;
+            color: #fff;
+            padding: 0.875rem 1.875rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: var(--spring);
+            box-shadow: 0 4px 24px rgba(0, 212, 255, 0.25), 0 2px 8px rgba(124, 58, 237, 0.2);
+            letter-spacing: 0.01em;
+        }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.35), 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn-hero-ghost {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-2);
+            padding: 0.875rem 1.875rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-hero-ghost:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: var(--text);
+        }
+
+        /* ---- STATS ROW ---- */
+        .hero-stats {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            animation: fadeInUp 0.6s ease 0.4s both;
+        }
+
+        .stat-item { display: flex; flex-direction: column; gap: 0.2rem; padding: 0 1.5rem; }
+        .stat-item:first-child { padding-left: 0; }
+
+        .stat-val {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.04em;
+        }
+
+        .stat-sep {
+            width: 1px;
+            height: 36px;
+            background: rgba(0, 212, 255, 0.12);
+        }
+
+        /* ---- RIGHT COLUMN (APP MOCKUP) ---- */
+        .hero-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeInRight 0.7s ease 0.2s both;
+        }
+
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(24px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .app-mockup {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(13, 17, 35, 0.9);
+            border: 1px solid rgba(0, 212, 255, 0.12);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 212, 255, 0.05), 0 0 60px rgba(0, 212, 255, 0.06);
+            position: relative;
+        }
+
+        /* Detalhe de canto */
+        .app-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 40px; height: 40px;
+            border-top: 2px solid rgba(0, 212, 255, 0.4);
+            border-left: 2px solid rgba(0, 212, 255, 0.4);
+            border-radius: 20px 0 0 0;
+        }
+
+        .app-mockup::after {
+            content: '';
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 40px; height: 40px;
+            border-bottom: 2px solid rgba(124, 58, 237, 0.4);
+            border-right: 2px solid rgba(124, 58, 237, 0.4);
+            border-radius: 0 0 20px 0;
+        }
+
+        .mockup-bar {
+            background: rgba(7, 8, 16, 0.8);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.07);
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mockup-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+
+        .md-red    { background: #ff5f57; }
+        .md-yellow { background: #febc2e; }
+        .md-green  { background: #28c840; }
+
+        .mockup-title {
+            flex: 1;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            margin-right: 1rem;
+        }
+
+        .mockup-body { padding: 1.75rem 1.5rem 2rem; }
+
+        .mk-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .mk-brand-icon {
+            font-size: 1.1rem;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 212, 255, 0.07);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            border-radius: 8px;
+        }
+
+        .mk-brand-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .mk-brand-name span {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mk-heading {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .mk-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Steps mini */
+        .mk-steps {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .mk-step-dot {
+            display: flex; flex-direction: column; align-items: center; gap: 0.25rem; flex: 1;
+        }
+
+        .mk-step-circle {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700;
+            border: 2px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mk-step-circle.done {
+            border-color: #00ff88;
+            background: rgba(0,255,136,0.1);
+            color: #00ff88;
+        }
+
+        .mk-step-circle.active {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.1);
+            color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0,212,255,0.25);
+        }
+
+        .mk-step-line {
+            flex: 2; height: 1px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 1rem;
+        }
+
+        .mk-step-line.done { background: #00ff88; }
+
+        .mk-label-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .mk-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mk-input-fake {
+            background: rgba(7, 8, 16, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            border-radius: 7px;
+            padding: 0.6rem 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text);
+            margin-bottom: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mk-input-fake .mk-prefix {
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        .mk-input-fake .mk-val {
+            color: var(--text);
+        }
+
+        .mk-hints {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .mk-hint {
+            background: rgba(0, 212, 255, 0.03);
+            border: 1px solid rgba(0, 212, 255, 0.08);
+            border-radius: 6px;
+            padding: 0.45rem 0.625rem;
+            text-align: center;
+        }
+
+        .mk-hint-val {
+            display: block;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mk-hint-label {
+            display: block;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.04em;
+        }
+
+        /* AI generating animation */
+        .mk-ai-bar {
+            background: var(--gradient);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .mk-ai-spinner {
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        .mk-ai-dots::after {
+            content: '';
+            animation: dots 1.5s steps(3) infinite;
+        }
+
+        @keyframes dots {
+            0%   { content: ''; }
+            33%  { content: '.'; }
+            66%  { content: '..'; }
+            100% { content: '...'; }
+        }
+
+        /* Glow effect behind mockup */
+        .mockup-glow {
+            position: absolute;
+            inset: -60px;
+            background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0, 212, 255, 0.07), transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Floating chips around mockup */
+        .mockup-chip {
+            position: absolute;
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.12);
+            border-radius: 10px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-2);
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+        }
+
+        .mc-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: blink 2s infinite;
+        }
+
+        .chip-tl {
+            top: 15%; left: -8rem;
+            animation: floatA 5s ease-in-out infinite;
+        }
+
+        .chip-br {
+            bottom: 12%; right: -8rem;
+            animation: floatB 6s ease-in-out infinite 1s;
+        }
+
+        .chip-tr {
+            top: 40%; right: -9rem;
+            animation: floatA 7s ease-in-out infinite 0.5s;
+        }
+
+        /* ================================================
+           MODALS (login / cadastro)
+        ================================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: var(--bg-3);
+            border: 1px solid rgba(0, 212, 255, 0.12);
+            border-radius: var(--radius);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 212, 255, 0.05);
+            animation: slideUp 0.3s ease;
+            position: relative;
+        }
+
+        .modal-box h2 {
+            text-align: center;
+            margin-bottom: 0.4rem;
+            font-size: 1.5rem;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .modal-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem; right: 1rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-muted);
+            width: 30px; height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(0, 212, 255, 0.2);
+        }
+
+        /* msg */
+        #msg-login, #msg-cadastro {
+            font-size: 0.78rem;
+            font-weight: 500;
+            text-align: center;
+            min-height: 1em;
+            margin-top: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem; right: 2rem;
+            padding: 0.875rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid;
+            backdrop-filter: blur(12px);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-ok  { background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.2); color: var(--green); }
+        .toast-err { background: rgba(255,68,102,0.08); border-color: rgba(255,68,102,0.2); color: var(--red); }
+
+        /* ================================================
+           RESPONSIVIDADE
+        ================================================ */
+        @media (max-width: 900px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                text-align: center;
+            }
+
+            .hero-text { align-items: center; }
+            .hero-desc { margin-left: auto; margin-right: auto; }
+
+            .chip-tl, .chip-br, .chip-tr { display: none; }
+
+            .land-nav-links { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .land-nav { padding: 1rem 1.25rem; }
+            .hero { padding: 5rem 1.25rem 3rem; }
+            .hero-h1 { font-size: 2.2rem; }
+            .hero-ctas { flex-direction: column; width: 100%; }
+            .btn-hero-primary, .btn-hero-ghost { width: 100%; justify-content: center; }
+            .hero-stats { flex-wrap: wrap; gap: 1.25rem; }
+            .stat-sep { display: none; }
+            .stat-item { padding: 0; }
+        }
+    </style>
+</head>
+<body class="landing-page">
+
+<!-- ================================================
+     INTRO SCREEN
+================================================ -->
+<div id="intro-screen">
+    <div id="intro-title"><span id="intro-text"></span><span id="intro-cursor"></span></div>
+    <div id="intro-bar"></div>
+    <div id="intro-sub">Inteligência artificial para o seu setup</div>
+</div>
+
+<script>
+(function () {
+    const FULL_TEXT   = 'PC Builder AI';
+    const AI_START    = 10;
+    const textEl      = document.getElementById('intro-text');
+    const cursorEl    = document.getElementById('intro-cursor');
+    const subEl       = document.getElementById('intro-sub');
+    const barEl       = document.getElementById('intro-bar');
+    const introScreen = document.getElementById('intro-screen');
+
+    let i = 0;
+
+    function type() {
+        if (i <= FULL_TEXT.length) {
+            const plain = FULL_TEXT.slice(0, Math.min(i, AI_START));
+            const glow  = i > AI_START ? `<span class="ai-glow">${FULL_TEXT.slice(AI_START, i)}</span>` : '';
+            textEl.innerHTML = plain + glow;
+            i++;
+            setTimeout(type, i < 4 ? 350 : 260);
+        } else {
+            cursorEl.style.display = 'none';
+            barEl.style.width = '320px';
+            setTimeout(() => subEl.classList.add('visible'), 400);
+            setTimeout(() => {
+                introScreen.classList.add('fade-out');
+                setTimeout(() => introScreen.remove(), 750);
+            }, 1800);
+        }
+    }
+
+    setTimeout(type, 400);
+})();
+</script>
+
+<!-- ================================================
+     NAVBAR
+================================================ -->
+<nav class="land-nav" id="main-nav">
+    <a class="land-nav-brand" href="#">
+        <span class="brand-icon">🖥️</span>
+        PC Builder <span class="ai-text" style="margin-left:4px;">AI</span>
+    </a>
+
+    <div class="land-nav-links">
+        <a href="#como-funciona">Como Funciona</a>
+        <a href="#funcionalidades">Funcionalidades</a>
+        <a href="#sobre">Sobre</a>
+    </div>
+
+    <div class="land-nav-actions">
+        <button class="btn-ghost-nav" id="btn-abrir-login">Entrar</button>
+        <button class="btn-primary-nav" id="btn-abrir-cadastro">Começar Grátis</button>
+    </div>
+</nav>
+
+<!-- ================================================
+     HERO SECTION
+================================================ -->
+<section class="hero">
+    <div class="hero-content">
+
+        <!-- LEFT: texto -->
+        <div class="hero-text">
+            <div class="hero-tag">✨ IA de última geração</div>
+
+            <h1 class="hero-h1">
+                Monte o PC dos<br>
+                <span class="ai-text">seus sonhos</span>
+            </h1>
+
+            <p class="hero-desc">
+                Informe seu orçamento e descreva o uso, e nossa Inteligência Artificial monta a configuração completa — com preços reais, análise de compatibilidade e controle de bottleneck — em segundos.
+            </p>
+
+            <div class="hero-ctas">
+                <button class="btn-hero-primary" id="btn-montar">Montar meu PC →</button>
+                <button class="btn-hero-ghost" id="btn-como-funciona">Ver como funciona</button>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-val">+5.000</span>
+                    <span class="stat-label">Builds geradas</span>
+                </div>
+                <div class="stat-sep"></div>
+                <div class="stat-item">
+                    <span class="stat-val">9</span>
+                    <span class="stat-label">Categorias de peças</span>
+                </div>
+                <div class="stat-sep"></div>
+                <div class="stat-item">
+                    <span class="stat-val">IA</span>
+                    <span class="stat-label">Avançada</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: mockup do app -->
+        <div class="hero-visual">
+            <div class="mockup-glow"></div>
+
+            <!-- chips flutuantes -->
+            <div class="mockup-chip chip-tl">
+                <div class="mc-dot"></div>
+                Build gerada em 8s
+            </div>
+            <div class="mockup-chip chip-tr">
+                🔋 Bottleneck: 3%
+            </div>
+            <div class="mockup-chip chip-br">
+                ✅ 100% compatível
+            </div>
+
+            <div class="app-mockup">
+                <!-- barra de título fake -->
+                <div class="mockup-bar">
+                    <div class="mockup-dot md-red"></div>
+                    <div class="mockup-dot md-yellow"></div>
+                    <div class="mockup-dot md-green"></div>
+                    <span class="mockup-title">pcbuilder.ai — Montar PC</span>
+                </div>
+
+                <!-- conteúdo do app -->
+                <div class="mockup-body">
+                    <div class="mk-brand">
+                        <div class="mk-brand-icon">🖥️</div>
+                        <div class="mk-brand-name">PC Builder <span>AI</span></div>
+                    </div>
+
+                    <div class="mk-heading">Defina seu orçamento</div>
+                    <div class="mk-sub">// quanto você quer investir?</div>
+
+                    <!-- steps mini -->
+                    <div class="mk-steps">
+                        <div class="mk-step-dot">
+                            <div class="mk-step-circle done">✓</div>
+                        </div>
+                        <div class="mk-step-line done"></div>
+                        <div class="mk-step-dot">
+                            <div class="mk-step-circle active">2</div>
+                        </div>
+                        <div class="mk-step-line"></div>
+                        <div class="mk-step-dot">
+                            <div class="mk-step-circle">3</div>
+                        </div>
+                    </div>
+
+                    <!-- input fake -->
+                    <div class="mk-label-row">
+                        <span class="mk-label">Orçamento</span>
+                    </div>
+                    <div class="mk-input-fake">
+                        <span class="mk-prefix">R$</span>
+                        <span class="mk-val">7.000</span>
+                    </div>
+
+                    <!-- hints -->
+                    <div class="mk-hints">
+                        <div class="mk-hint">
+                            <span class="mk-hint-val">R$ 2.000</span>
+                            <span class="mk-hint-label">Entrada</span>
+                        </div>
+                        <div class="mk-hint">
+                            <span class="mk-hint-val">R$ 4.000</span>
+                            <span class="mk-hint-label">Intermediário</span>
+                        </div>
+                        <div class="mk-hint" style="border-color:rgba(0,212,255,0.25);background:rgba(0,212,255,0.08);">
+                            <span class="mk-hint-val" style="color:var(--cyan);">R$ 7.000</span>
+                            <span class="mk-hint-label">Avançado ✓</span>
+                        </div>
+                        <div class="mk-hint">
+                            <span class="mk-hint-val">R$ 12.000</span>
+                            <span class="mk-hint-label">Top de linha</span>
+                        </div>
+                    </div>
+
+                    <!-- AI bar -->
+                    <div class="mk-ai-bar">
+                        <div class="mk-ai-spinner"></div>
+                        <span>Gerando sua build<span class="mk-ai-dots"></span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ================================================
+     COMO FUNCIONA
+================================================ -->
+<section id="como-funciona" style="
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 6rem 2.5rem;
+    width: 100%;
+">
+    <div style="text-align:center; margin-bottom: 3.5rem;">
+        <div class="hero-tag" style="display:inline-flex; margin-bottom:1rem;">⚙️ Passo a passo</div>
+        <h2 style="font-family:'Space Grotesk',sans-serif; font-size:clamp(1.8rem,4vw,2.75rem); font-weight:800; color:var(--text); letter-spacing:-0.02em; margin-bottom:0.75rem;">
+            Como Funciona
+        </h2>
+        <p id="cf-desc" style="font-size:1rem; color:var(--text-2); max-width:520px; margin:0 auto; line-height:1.8; min-height:3em;"></p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1.5rem;">
+        <div class="cf-card">
+            <div class="cf-num">01</div>
+            <h3 class="cf-title">Informe o orçamento</h3>
+            <p class="cf-text">Digite quanto você quer investir — a IA respeita o limite ao centavo, sem estourar o valor.</p>
+        </div>
+        <div class="cf-card">
+            <div class="cf-num">02</div>
+            <h3 class="cf-title">Descreva o uso</h3>
+            <p class="cf-text">Games, edição de vídeo, programação, uso geral — conte como vai usar o PC e a IA adapta a build.</p>
+        </div>
+        <div class="cf-card">
+            <div class="cf-num">03</div>
+            <h3 class="cf-title">Receba sua build</h3>
+            <p class="cf-text">Em segundos você tem uma configuração completa: CPU, placa-mãe, RAM, GPU, fonte e armazenamento.</p>
+        </div>
+    </div>
+</section>
+
+<style>
+.cf-card {
+    background: rgba(13,17,35,0.7);
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    transition: border-color 0.3s, transform 0.3s;
+}
+.cf-card:hover {
+    border-color: rgba(0,212,255,0.3);
+    transform: translateY(-4px);
+}
+.cf-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg,#00d4ff,#7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.75rem;
+}
+.cf-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+.cf-text {
+    font-size: 0.88rem;
+    color: var(--text-2);
+    line-height: 1.7;
+}
+</style>
+
+<script>
+(function() {
+    const texto = "Você informa o orçamento e o objetivo, e nossa IA monta a configuração ideal — respeitando o limite financeiro, garantindo compatibilidade entre peças e evitando gargalos de desempenho.";
+    const el = document.getElementById('cf-desc');
+    let idx = 0;
+    let started = false;
+
+    function typeChar() {
+        if (idx <= texto.length) {
+            el.textContent = texto.slice(0, idx);
+            idx++;
+            setTimeout(typeChar, 28);
+        }
+    }
+
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && !started) {
+            started = true;
+            typeChar();
+        }
+    }, { threshold: 0.3 });
+    observer.observe(el);
+})();
+</script>
+
+<!-- ================================================
+     FUNCIONALIDADES
+================================================ -->
+<section id="funcionalidades" style="
+    background: rgba(0,212,255,0.025);
+    border-top: 1px solid rgba(0,212,255,0.07);
+    border-bottom: 1px solid rgba(0,212,255,0.07);
+    padding: 6rem 2.5rem;
+">
+    <div style="max-width:1200px; margin:0 auto;">
+        <div style="text-align:center; margin-bottom:3.5rem;">
+            <div class="hero-tag" style="display:inline-flex; margin-bottom:1rem;">🚀 Recursos</div>
+            <h2 style="font-family:'Space Grotesk',sans-serif; font-size:clamp(1.8rem,4vw,2.75rem); font-weight:800; color:var(--text); letter-spacing:-0.02em;">
+                Funcionalidades
+            </h2>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.25rem;">
+            <div class="feat-card">
+                <span class="feat-icon">🤖</span>
+                <h4 class="feat-title">IA com Gemini</h4>
+                <p class="feat-text">Motor de IA avançado que entende linguagem natural e toma decisões técnicas contextuais.</p>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">💰</span>
+                <h4 class="feat-title">Orçamento Respeitado</h4>
+                <p class="feat-text">A build nunca ultrapassa o valor informado. Cada peça é escolhida dentro do limite definido.</p>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">🔧</span>
+                <h4 class="feat-title">Compatibilidade Garantida</h4>
+                <p class="feat-text">Verificação automática de socket, tipo de memória e potência de fonte para evitar erros.</p>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">📊</span>
+                <h4 class="feat-title">Análise de Bottleneck</h4>
+                <p class="feat-text">Identifica possíveis gargalos entre CPU e GPU para garantir equilíbrio no desempenho.</p>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">🛒</span>
+                <h4 class="feat-title">Preços Reais</h4>
+                <p class="feat-text">Peças com preços reais do mercado brasileiro — Kabum, Pichau e Aliexpress.</p>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">⚡</span>
+                <h4 class="feat-title">Resultado em Segundos</h4>
+                <p class="feat-text">Build completa gerada em menos de 15 segundos, com justificativa técnica de cada escolha.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.feat-card {
+    background: rgba(13,17,35,0.6);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1.75rem 1.5rem;
+    transition: border-color 0.3s, transform 0.3s;
+}
+.feat-card:hover {
+    border-color: rgba(124,58,237,0.3);
+    transform: translateY(-3px);
+}
+.feat-icon { font-size: 1.6rem; display:block; margin-bottom:0.75rem; }
+.feat-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+}
+.feat-text { font-size: 0.84rem; color: var(--text-2); line-height: 1.65; }
+</style>
+
+<!-- ================================================
+     SOBRE
+================================================ -->
+<section id="sobre" style="max-width:1200px; margin:0 auto; padding:6rem 2.5rem;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:4rem; align-items:center;">
+        <div>
+            <div class="hero-tag" style="display:inline-flex; margin-bottom:1rem;">📖 Sobre o projeto</div>
+            <h2 style="font-family:'Space Grotesk',sans-serif; font-size:clamp(1.8rem,4vw,2.5rem); font-weight:800; color:var(--text); letter-spacing:-0.02em; margin-bottom:1.25rem;">
+                Sobre o <span class="ai-text">PC Builder AI</span>
+            </h2>
+            <p style="font-size:0.97rem; color:var(--text-2); line-height:1.8; margin-bottom:1rem;">
+                O <strong style="color:var(--text)">PC Builder AI</strong> nasceu como Projeto Integrador com o objetivo de democratizar o acesso à montagem de computadores no Brasil.
+            </p>
+            <p style="font-size:0.97rem; color:var(--text-2); line-height:1.8; margin-bottom:1rem;">
+                Muitas pessoas têm dificuldade em escolher peças compatíveis dentro do orçamento — a IA elimina essa barreira, entregando uma configuração tecnicamente sólida em segundos.
+            </p>
+            <p style="font-size:0.97rem; color:var(--text-2); line-height:1.8;">
+                Desenvolvido com HTML, CSS, JavaScript vanilla e integração com a API Gemini do Google, o projeto une tecnologia acessível com inteligência artificial de ponta.
+            </p>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div class="sobre-stat">
+                <span class="sobre-val">100%</span>
+                <span class="sobre-label">Orçamento respeitado</span>
+            </div>
+            <div class="sobre-stat">
+                <span class="sobre-val">9</span>
+                <span class="sobre-label">Categorias de componentes</span>
+            </div>
+            <div class="sobre-stat">
+                <span class="sobre-val">Gemini</span>
+                <span class="sobre-label">Motor de IA (Google)</span>
+            </div>
+            <div class="sobre-stat">
+                <span class="sobre-val">&lt;15s</span>
+                <span class="sobre-label">Tempo médio de geração</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.sobre-stat {
+    background: rgba(13,17,35,0.7);
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+.sobre-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg,#00d4ff,#7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+}
+.sobre-label {
+    font-size: 0.88rem;
+    color: var(--text-2);
+    font-family: 'Inter', sans-serif;
+}
+@media (max-width: 768px) {
+    #sobre > div { grid-template-columns: 1fr !important; gap: 2.5rem !important; }
+}
+</style>
+
+<!-- ================================================
+     MODAL: LOGIN
+================================================ -->
+<div class="modal-overlay" id="modal-login">
+    <div class="modal-box">
+        <button class="modal-close" id="btn-fechar-login">✕</button>
+        <h2>Bem-vindo de volta</h2>
+        <p class="modal-subtitle">// Entre para montar o setup dos seus sonhos</p>
+
+        <form id="login-form" autocomplete="off">
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <div class="input-wrapper">
+                    <span>📧</span>
+                    <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="senha">Senha</label>
+                <div class="input-wrapper">
+                    <span>🔒</span>
+                    <input type="password" id="senha" placeholder="Sua senha" required autocomplete="current-password">
+                </div>
+            </div>
+
+            <p id="msg-login" style="color:#ff4466;"></p>
+
+            <button type="submit" class="btn-login">Entrar →</button>
+        </form>
+
+        <div class="divider">ou</div>
+
+        <div class="login-links">
+            <a href="#" class="link-forgot">Esqueceu a senha?</a>
+            <a href="#" class="link-register" id="btn-ir-cadastro">Criar conta gratuita</a>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================
+     MODAL: CADASTRO
+================================================ -->
+<div class="modal-overlay" id="modal-cadastro">
+    <div class="modal-box">
+        <button class="modal-close" id="btn-fechar-cadastro">✕</button>
+        <h2>Criar conta</h2>
+        <p class="modal-subtitle">// Comece a montar sua build agora</p>
+
+        <form id="cadastro-form" autocomplete="off">
+            <div class="input-group">
+                <label for="cad-email">E-mail</label>
+                <div class="input-wrapper">
+                    <span>📧</span>
+                    <input type="email" id="cad-email" placeholder="seu@email.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="cad-senha">Senha <span style="color:#4a5568;font-weight:400;">(mín. 8 caracteres)</span></label>
+                <div class="input-wrapper">
+                    <span>🔒</span>
+                    <input type="password" id="cad-senha" placeholder="Crie uma senha" required autocomplete="new-password">
+                </div>
+            </div>
+
+            <p id="msg-cadastro" style="color:#ff4466;"></p>
+
+            <button type="submit" class="btn-login" style="margin-top:1rem;">Criar conta →</button>
+        </form>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/login.js"></script>
+<script>
+    /* ---------- Navbar scroll ---------- */
+    window.addEventListener('scroll', () => {
+        document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    /* ---------- Modal helpers ---------- */
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function closeOnBackdrop(id) {
+        document.getElementById(id).addEventListener('click', e => {
+            if (e.target === document.getElementById(id)) closeModal(id);
+        });
+    }
+
+    /* Abrir modais */
+    document.getElementById('btn-abrir-login').addEventListener('click', () => openModal('modal-login'));
+    document.getElementById('btn-abrir-cadastro').addEventListener('click', () => openModal('modal-cadastro'));
+    document.getElementById('btn-montar').addEventListener('click', () => openModal('modal-login'));
+
+    /* Fechar modais */
+    document.getElementById('btn-fechar-login').addEventListener('click', () => closeModal('modal-login'));
+    document.getElementById('btn-fechar-cadastro').addEventListener('click', () => closeModal('modal-cadastro'));
+
+    /* Fechar clicando fora */
+    closeOnBackdrop('modal-login');
+    closeOnBackdrop('modal-cadastro');
+
+    /* Ir de login para cadastro */
+    document.getElementById('btn-ir-cadastro').addEventListener('click', e => {
+        e.preventDefault();
+        closeModal('modal-login');
+        openModal('modal-cadastro');
+    });
+
+    /* Scroll suave para "como funciona" */
+    document.getElementById('btn-como-funciona').addEventListener('click', () => {
+        const target = document.getElementById('como-funciona');
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+        else openModal('modal-login');
+    });
+
+    /* ---------- Toast helper ---------- */
+    function showToast(msg, tipo) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast toast-${tipo} show`;
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    /* ---------- Cadastro ---------- */
+    document.getElementById('cadastro-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('cad-email').value.trim();
+        const senha = document.getElementById('cad-senha').value;
+        const msg   = document.getElementById('msg-cadastro');
+        const btn   = this.querySelector('button[type="submit"]');
+
+        msg.textContent = '';
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            msg.textContent = 'Formato de e-mail inválido.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Criando conta...';
+
+        try {
+            const r = await fetch('/api/cadastro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, senha })
+            });
+            const d = await r.json();
+
+            if (d.sucesso) {
+                closeModal('modal-cadastro');
+                showToast('Conta criada! Faça login.', 'ok');
+                openModal('modal-login');
+            } else {
+                msg.textContent = d.mensagem || 'Erro ao criar conta.';
+            }
+        } catch {
+            msg.textContent = 'Erro de conexão.';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Criar conta →';
+        }
+    });
+</script>
+</body>
+</html>

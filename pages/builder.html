@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montar PC — PC Builder AI</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* Nav interna */
+        .app-nav {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-nav-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-nav-brand span { font-size: 1.4rem; }
+
+        .app-nav-actions { display: flex; gap: 0.5rem; }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #94a3b8;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.09);
+            color: #f1f5f9;
+            border-color: rgba(255,255,255,0.14);
+        }
+
+        /* Steps visuais */
+        .steps-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 2rem;
+        }
+
+        .step-dot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 2px solid #1a2235;
+            background: #1a2235;
+            color: #475569;
+            transition: all 0.35s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle.active {
+            border-color: #6366f1;
+            background: #6366f1;
+            color: #fff;
+            box-shadow: 0 0 0 4px rgba(99,102,241,0.18);
+        }
+
+        .step-circle.done {
+            border-color: #10b981;
+            background: #10b981;
+            color: #fff;
+        }
+
+        .step-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        .step-label.active { color: #818cf8; }
+        .step-label.done   { color: #34d399; }
+
+        .step-line {
+            flex: 2;
+            height: 2px;
+            background: #1a2235;
+            margin-bottom: 1.25rem;
+            transition: background 0.4s;
+        }
+
+        .step-line.done { background: #10b981; }
+
+        /* Campo de orçamento com símbolo R$ */
+        .currency-input {
+            position: relative;
+        }
+
+        .currency-prefix {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+
+        .currency-input input {
+            padding-left: 2.75rem !important;
+        }
+
+        /* Chips de objetivo rápido */
+        .objective-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.875rem;
+        }
+
+        .obj-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #94a3b8;
+            padding: 0.4rem 0.875rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .obj-chip:hover {
+            background: rgba(99,102,241,0.12);
+            border-color: rgba(99,102,241,0.3);
+            color: #818cf8;
+        }
+
+        /* Hint de orçamento */
+        .budget-hints {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.875rem;
+        }
+
+        .budget-hint {
+            flex: 1;
+            min-width: 100px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .budget-hint:hover {
+            background: rgba(99,102,241,0.1);
+            border-color: rgba(99,102,241,0.25);
+        }
+
+        .budget-hint .hint-val {
+            display: block;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #f1f5f9;
+        }
+
+        .budget-hint .hint-label {
+            display: block;
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 0.1rem;
+        }
+
+        .form-hint {
+            font-size: 0.78rem;
+            color: #475569;
+            margin-top: 0.5rem;
+        }
+
+        /* Loading aprimorado */
+        .loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .loading-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .loading-step {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.875rem;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.82rem;
+            color: #475569;
+            transition: all 0.3s;
+        }
+
+        .loading-step.active {
+            background: rgba(99,102,241,0.08);
+            border-color: rgba(99,102,241,0.2);
+            color: #818cf8;
+        }
+
+        .loading-step.done {
+            background: rgba(16,185,129,0.07);
+            border-color: rgba(16,185,129,0.18);
+            color: #34d399;
+        }
+
+        .ls-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="app-nav">
+    <a class="app-nav-brand" href="../index.html">
+        <span>🖥️</span> PC Builder <span class="ai-text" style="font-size:inherit;">AI</span>
+    </a>
+    <div class="app-nav-actions">
+        <a class="nav-btn" href="../index.html">🚪 Sair</a>
+    </div>
+</nav>
+
+<main style="width:100%;max-width:680px;position:relative;z-index:1;">
+<section class="builder-container">
+
+    <!-- Steps visuais -->
+    <div class="steps-row" id="steps-visual">
+        <div class="step-dot">
+            <div class="step-circle active" id="sc-1">1</div>
+            <span class="step-label active" id="sl-1">Orçamento</span>
+        </div>
+        <div class="step-line" id="step-line-1"></div>
+        <div class="step-dot">
+            <div class="step-circle" id="sc-2">2</div>
+            <span class="step-label" id="sl-2">Objetivo</span>
+        </div>
+    </div>
+
+    <!-- Barra de progresso fina (acessibilidade) -->
+    <div class="progress-container" style="margin-bottom:2rem;">
+        <div class="progress-bar" id="progress-bar" style="width:50%;"></div>
+    </div>
+
+    <!-- Formulário -->
+    <form id="pc-form">
+
+        <!-- STEP 1: Orçamento -->
+        <div class="form-step active" id="step-1">
+            <h2>Defina seu orçamento</h2>
+
+            <div class="form-group">
+                <label for="orcamento">Quanto você quer investir?</label>
+                <div class="currency-input">
+                    <span class="currency-prefix">R$</span>
+                    <input type="number" id="orcamento" placeholder="5.000" min="1500">
+                </div>
+                <span class="error-msg" id="error-orcamento">Orçamento mínimo: R$ 1.500</span>
+                <p class="form-hint">Orçamento mínimo recomendado: R$ 1.500</p>
+            </div>
+
+            <div class="budget-hints">
+                <div class="budget-hint" onclick="document.getElementById('orcamento').value=2000">
+                    <span class="hint-val">R$ 2.000</span>
+                    <span class="hint-label">Entrada</span>
+                </div>
+                <div class="budget-hint" onclick="document.getElementById('orcamento').value=4000">
+                    <span class="hint-val">R$ 4.000</span>
+                    <span class="hint-label">Intermediário</span>
+                </div>
+                <div class="budget-hint" onclick="document.getElementById('orcamento').value=7000">
+                    <span class="hint-val">R$ 7.000</span>
+                    <span class="hint-label">Avançado</span>
+                </div>
+                <div class="budget-hint" onclick="document.getElementById('orcamento').value=12000">
+                    <span class="hint-val">R$ 12.000</span>
+                    <span class="hint-label">Top de linha</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-next" id="btn-next" style="margin-top:2rem;">
+                Próximo →
+            </button>
+        </div>
+
+        <!-- STEP 2: Objetivo -->
+        <div class="form-step" id="step-2">
+            <h2>Qual o objetivo do PC?</h2>
+
+            <div class="form-group">
+                <label for="objetivo">Descreva o uso que você pretende fazer:</label>
+                <textarea id="objetivo" rows="4" placeholder="Ex: Quero jogar GTA V e Cyberpunk em 1080p com pelo menos 60fps, e às vezes editar vídeos curtos no Premiere..."></textarea>
+                <span class="error-msg" id="error-objetivo">Descreva com mais detalhes o uso pretendido</span>
+            </div>
+
+            <div class="objective-chips">
+                <button type="button" class="obj-chip" onclick="appendChip('Games pesados em 1080p')">🎮 Games 1080p</button>
+                <button type="button" class="obj-chip" onclick="appendChip('Games em 4K de alta performance')">🖥️ Games 4K</button>
+                <button type="button" class="obj-chip" onclick="appendChip('Edição de vídeo e produção de conteúdo')">🎬 Edição de vídeo</button>
+                <button type="button" class="obj-chip" onclick="appendChip('Streaming e criação de conteúdo')">📡 Streaming</button>
+                <button type="button" class="obj-chip" onclick="appendChip('Programação e desenvolvimento de software')">💻 Programação</button>
+                <button type="button" class="obj-chip" onclick="appendChip('Uso geral e escritório')">📋 Uso geral</button>
+            </div>
+
+            <div class="button-group" style="margin-top:2rem;">
+                <button type="button" class="btn btn-prev" id="btn-prev">← Voltar</button>
+                <button type="submit" class="btn btn-submit">Gerar com IA ✨</button>
+            </div>
+        </div>
+
+    </form>
+
+    <!-- Loading -->
+    <div id="loading-screen" class="hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loading-text">🔍 Analisando seu objetivo...</p>
+            <div class="loading-steps">
+                <div class="loading-step active" id="ls-1">
+                    <span class="ls-icon">🔍</span> Analisando seu objetivo...
+                </div>
+                <div class="loading-step" id="ls-2">
+                    <span class="ls-icon">🧠</span> Consultando a IA...
+                </div>
+                <div class="loading-step" id="ls-3">
+                    <span class="ls-icon">⚙️</span> Montando sua configuração...
+                </div>
+                <div class="loading-step" id="ls-4">
+                    <span class="ls-icon">✅</span> Finalizando...
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+</main>
+
+<script src="../js/ai.js"></script>
+<script src="../js/budget-enforcer.js"></script>
+<script src="../js/main.js"></script>
+<script>
+    function appendChip(text) {
+        const el = document.getElementById('objetivo');
+        el.value = el.value ? el.value.trimEnd() + ' ' + text + '.' : text + '.';
+        el.focus();
+    }
+
+    // Atualiza steps visuais ao avançar/voltar
+    const origNext = document.getElementById('btn-next');
+    const origPrev = document.getElementById('btn-prev');
+
+    function setStepVisual(step) {
+        const sc1 = document.getElementById('sc-1');
+        const sc2 = document.getElementById('sc-2');
+        const sl1 = document.getElementById('sl-1');
+        const sl2 = document.getElementById('sl-2');
+        const ln1 = document.getElementById('step-line-1');
+
+        if (step === 1) {
+            sc1.className = 'step-circle active'; sl1.className = 'step-label active';
+            sc2.className = 'step-circle';        sl2.className = 'step-label';
+            ln1.className = 'step-line';
+        } else {
+            sc1.className = 'step-circle done';   sl1.className = 'step-label done';
+            sc2.className = 'step-circle active'; sl2.className = 'step-label active';
+            ln1.className = 'step-line done';
+        }
+    }
+
+    origNext.addEventListener('click', () => setTimeout(() => setStepVisual(2), 50));
+    origPrev.addEventListener('click', () => setTimeout(() => setStepVisual(1), 50));
+
+    // Animar loading steps
+    let loadingInterval;
+    const observer = new MutationObserver(() => {
+        const ls = document.getElementById('loading-screen');
+        if (!ls.classList.contains('hidden')) {
+            startLoadingAnim();
+        } else {
+            clearInterval(loadingInterval);
+        }
+    });
+    observer.observe(document.getElementById('loading-screen'), { attributes: true, attributeFilter: ['class'] });
+
+    function startLoadingAnim() {
+        const steps = ['ls-1','ls-2','ls-3','ls-4'];
+        let i = 0;
+        clearInterval(loadingInterval);
+        steps.forEach(id => document.getElementById(id).className = 'loading-step');
+        document.getElementById(steps[0]).className = 'loading-step active';
+
+        loadingInterval = setInterval(() => {
+            if (i < steps.length - 1) {
+                document.getElementById(steps[i]).className = 'loading-step done';
+                i++;
+                document.getElementById(steps[i]).className = 'loading-step active';
+            }
+        }, 3500);
+    }
+</script>
+
+</body>
+</html>
