@@ -16,16 +16,6 @@ const app = express();
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'DELETE'], allowedHeaders: ['Content-Type'] }));
 
-const mysql = require('mysql2/promise');
-const cors = require('cors');
-const path = require('path');
-const axios = require('axios');
-const { processarBuild } = require('./src/index');
-const { enviarEmail } = require('./src/modules/email');
-const bcrypt = require('bcryptjs');
-
-const app = express();
-
 // ============================================
 // MIDDLEWARES
 // ============================================
