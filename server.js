@@ -251,7 +251,7 @@ app.post('/api/cadastro', verificarBanco, async (req, res) => {
 app.post('/api/login', verificarBanco, async (req, res) => {
     try {
         const { email, senha } = req.body;
-<<<<<<< HEAD
+
         if (!email || !senha) return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha são obrigatórios.' });
         if (!EMAIL_REGEX.test(email.trim())) return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail inválido.' });
 
