@@ -34,8 +34,8 @@ async function inicializarBanco() {
         queueLimit:         0,
     });
 
+    const conn = await pool.getConnection();
     try {
-        const conn = await pool.getConnection();
         console.log('✅ Conexão com MySQL estabelecida.');
 
         // Tabela Usuarios
@@ -135,9 +135,8 @@ async function inicializarBanco() {
         conn.release();
         console.log('✅ Todas as tabelas verificadas/criadas com sucesso.');
     } catch (err) {
-        console.error('❌ Falha ao conectar ao MySQL:', err.message);
-        console.error('   Dica: rode o reset_banco.sql no MySQL Workbench e tente novamente.');
-        process.exit(1);
+        conn.release();
+        throw err;
     }
 }
 
@@ -395,20 +394,21 @@ app.get('*', (req, res) => {
 // ============================================
 const PORT = process.env.PORT || 3003;
 
-inicializarBanco().then(() => {
-    const servidor = app.listen(PORT, () => {
-        console.log('');
-        console.log('===========================================');
-        console.log('  PC Builder AI — Servidor Online');
-        console.log(`  URL: http://localhost:${PORT}`);
-        console.log('===========================================');
-    });
-    servidor.on('error', erro => {
-        if (erro.code === 'EADDRINUSE') console.error(`ERRO: Porta ${PORT} em uso. Encerre o processo e tente novamente.`);
-        else console.error('Erro ao iniciar servidor:', erro.message);
-        process.exit(1);
-    });
-}).catch(err => {
-    console.error('Falha fatal ao iniciar banco:', err.message);
+const servidor = app.listen(PORT, () => {
+    console.log('');
+    console.log('===========================================');
+    console.log('  PC Builder AI — Servidor Online');
+    console.log(`  URL: http://localhost:${PORT}`);
+    console.log('===========================================');
+});
+
+servidor.on('error', erro => {
+    if (erro.code === 'EADDRINUSE') console.error(`ERRO: Porta ${PORT} em uso.`);
+    else console.error('Erro ao iniciar servidor:', erro.message);
     process.exit(1);
+});
+
+inicializarBanco().catch(err => {
+    console.error('⚠️  Banco de dados indisponível:', err.message);
+    console.error('   Rotas que dependem do banco retornarão 503 até a conexão ser estabelecida.');
 });

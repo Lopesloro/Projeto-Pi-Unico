@@ -26,14 +26,13 @@ const config = {
   },
 };
 
-const missingInProduction = [];
 if (config.server.nodeEnv === 'production') {
-  if (!config.openai.apiKey) missingInProduction.push('OPENAI_API_KEY');
-  if (!config.gmail.clientId) missingInProduction.push('GMAIL_CLIENT_ID');
-  if (!config.gmail.refreshToken) missingInProduction.push('GMAIL_REFRESH_TOKEN');
-
-  if (missingInProduction.length > 0) {
-    throw new Error(`Variáveis de ambiente ausentes em produção: ${missingInProduction.join(', ')}`);
+  const missing = [];
+  if (!process.env.MISTRAL_API_KEY) missing.push('MISTRAL_API_KEY');
+  if (!config.gmail.clientId) missing.push('GMAIL_CLIENT_ID');
+  if (!config.gmail.refreshToken) missing.push('GMAIL_REFRESH_TOKEN');
+  if (missing.length > 0) {
+    console.warn(`⚠️  Variáveis de ambiente ausentes: ${missing.join(', ')}`);
   }
 }
 

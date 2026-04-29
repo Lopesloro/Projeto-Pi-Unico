@@ -1,16 +1,11 @@
-const { OpenAI } = require('openai');
-const config = require('../../config');
+const axios = require('axios');
 const logger = require('../../utils/logger');
 const { formatBRL } = require('../../utils/formatter');
 
-// Orçamento mínimo para uma build funcional sem GPU dedicada
 const ORCAMENTO_MINIMO_BRL = 1800;
+const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL = 'mistral-small-latest';
 
-const openaiClient = new OpenAI({ apiKey: config.openai.apiKey });
-
-/**
- * Monta o prompt com os preços reais coletados pelo scraper.
- */
 function buildPrompt(orcamento, objetivo, precosScraping) {
   const listaPrecos = Object.entries(precosScraping)
     .map(([componente, resultados]) => {
@@ -73,9 +68,6 @@ FORMATO DE RESPOSTA (JSON puro, sem markdown, sem texto fora do JSON):
 `.trim();
 }
 
-/**
- * Valida e parseia o JSON retornado pela IA.
- */
 function parseRespostaIA(conteudo) {
   const jsonLimpo = conteudo
     .replace(/^```json\s*/i, '')
@@ -91,7 +83,6 @@ function parseRespostaIA(conteudo) {
 
   const componentesObrigatorios = ['CPU', 'RAM', 'SSD', 'Placa-mãe', 'Fonte'];
   const componentesRetornados = parsed.configuracao.map((c) => c.componente);
-
   for (const obrigatorio of componentesObrigatorios) {
     const encontrado = componentesRetornados.some((c) =>
       c.toLowerCase().includes(obrigatorio.toLowerCase())
@@ -104,14 +95,34 @@ function parseRespostaIA(conteudo) {
   return parsed;
 }
 
-/**
- * Usa GPT-4o para recomendar a melhor build dentro do orçamento.
- * @param {object} params
- * @param {number} params.orcamento - Orçamento em BRL
- * @param {string} params.objetivo - Objetivo do usuário (ex: "PC gamer 1080p")
- * @param {object} params.precosScraping - Mapa { componenteNome: [resultados] }
- * @returns {Promise<object>} Build recomendada no formato especificado
- */
+async function chamarMistral(prompt) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    throw new Error('MISTRAL_API_KEY não configurada. Defina a variável de ambiente.');
+  }
+
+  const resposta = await axios.post(
+    MISTRAL_API_URL,
+    {
+      model: MISTRAL_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 2000,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 60000,
+    }
+  );
+
+  const conteudo = resposta.data.choices?.[0]?.message?.content;
+  if (!conteudo) throw new Error('Mistral retornou resposta vazia.');
+  return conteudo;
+}
+
 async function recomendarBuild({ orcamento, objetivo, precosScraping }) {
   if (orcamento < ORCAMENTO_MINIMO_BRL) {
     throw new Error(
@@ -119,68 +130,44 @@ async function recomendarBuild({ orcamento, objetivo, precosScraping }) {
     );
   }
 
-  if (!config.openai.apiKey) {
-    throw new Error(
-      'OPENAI_API_KEY não configurada. Defina a variável de ambiente para usar o módulo de IA.'
-    );
-  }
-
   const prompt = buildPrompt(orcamento, objetivo, precosScraping);
-  logger.info('IA: enviando prompt para GPT-4o', { orcamento, objetivo });
-
-  const tentarChamada = async (mensagemExtra) => {
-    const messages = [{ role: 'user', content: prompt }];
-    if (mensagemExtra) messages.push({ role: 'user', content: mensagemExtra });
-    const completion = await openaiClient.chat.completions.create({
-      model: config.openai.model,
-      messages,
-      temperature: 0.3,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    });
-    const conteudo = completion.choices[0]?.message?.content;
-    if (!conteudo) throw new Error('GPT-4o retornou resposta vazia.');
-    return parseRespostaIA(conteudo);
-  };
-
-  let buildRecomendada = await tentarChamada(null);
+  logger.info('IA: enviando prompt para Mistral', { orcamento, objetivo });
 
   const recalcularTotal = (build) =>
     build.configuracao
       .filter((c) => c.disponivel !== false)
       .reduce((acc, c) => acc + (Number(c.preco) || 0), 0);
 
+  let buildRecomendada = parseRespostaIA(await chamarMistral(prompt));
   buildRecomendada.totalGasto = recalcularTotal(buildRecomendada);
 
-  // ── Enforcer de orçamento (regra inviolável do cliente) ──
   if (buildRecomendada.totalGasto > orcamento) {
     logger.warn('IA: build inicial estourou o orçamento — pedindo nova tentativa', {
       totalGasto: buildRecomendada.totalGasto,
       orcamento,
     });
     const excesso = buildRecomendada.totalGasto - orcamento;
-    const reforco = `A build anterior totalizou ${formatBRL(buildRecomendada.totalGasto)}, ` +
+    const reforco =
+      `A build anterior totalizou ${formatBRL(buildRecomendada.totalGasto)}, ` +
       `que excede em ${formatBRL(excesso)} o orçamento do cliente (${formatBRL(orcamento)}). ` +
       `Refaça a montagem trocando peças por opções mais baratas (ou removendo a GPU se necessário) ` +
       `para que o totalGasto fique <= ${formatBRL(orcamento)}. NÃO ULTRAPASSE.`;
 
-    buildRecomendada = await tentarChamada(reforco);
+    buildRecomendada = parseRespostaIA(await chamarMistral(prompt + '\n\n' + reforco));
     buildRecomendada.totalGasto = recalcularTotal(buildRecomendada);
   }
 
   if (buildRecomendada.totalGasto > orcamento) {
-    // Defesa final: marca componentes mais caros como indisponíveis até caber.
-    logger.error('IA: mesmo após retry, build excede orçamento — aplicando corte server-side', {
-      totalGasto: buildRecomendada.totalGasto,
-      orcamento,
-    });
+    logger.error('IA: mesmo após retry, build excede orçamento — aplicando corte server-side');
     const ordenados = [...buildRecomendada.configuracao]
       .filter((c) => c.disponivel !== false)
       .sort((a, b) => (b.preco || 0) - (a.preco || 0));
     for (const item of ordenados) {
       if (buildRecomendada.totalGasto <= orcamento) break;
       item.disponivel = false;
-      item.justificativa = `[REMOVIDO PELO ENFORCER] Esta peça foi descartada para respeitar o orçamento de ${formatBRL(orcamento)}. ` + (item.justificativa || '');
+      item.justificativa =
+        `[REMOVIDO PELO ENFORCER] Esta peça foi descartada para respeitar o orçamento de ${formatBRL(orcamento)}. ` +
+        (item.justificativa || '');
       buildRecomendada.totalGasto = recalcularTotal(buildRecomendada);
     }
   }
