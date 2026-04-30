@@ -37,7 +37,8 @@
       "Bash(npm ci *)",
       "Bash(grep -rn \"^=======$\" . --include=\"*.js\" --include=\"*.html\" --include=\"*.css\" --include=\"*.json\" --include=\"*.sql\")",
       "Bash(grep -v *)",
-      "Bash(grep -rn *)"
+      "Bash(grep -rn *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

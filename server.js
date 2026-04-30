@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const mysql   = require('mysql2/promise');
+const { Pool } = require('pg');
 const cors    = require('cors');
 const path    = require('path');
 const fs      = require('fs');
@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // ============================================
-// BANCO DE DADOS (MySQL 8)
+// BANCO DE DADOS (PostgreSQL)
 // ============================================
 let pool;
 
@@ -30,118 +30,108 @@ const TABELAS = [
     {
         nome: 'Usuarios',
         sql: `
-            CREATE TABLE IF NOT EXISTS Usuarios (
-                Id          INT          AUTO_INCREMENT PRIMARY KEY,
-                Email       VARCHAR(255) NOT NULL UNIQUE,
-                Senha       VARCHAR(255) NOT NULL,
-                Nome        VARCHAR(150) NULL,
-                DataCriacao TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-                UltimoLogin TIMESTAMP    NULL DEFAULT NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            CREATE TABLE IF NOT EXISTS "Usuarios" (
+                "Id"          SERIAL       PRIMARY KEY,
+                "Email"       VARCHAR(255) NOT NULL UNIQUE,
+                "Senha"       VARCHAR(255) NOT NULL,
+                "Nome"        VARCHAR(150) NULL,
+                "DataCriacao" TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+                "UltimoLogin" TIMESTAMP    NULL DEFAULT NULL
+            )
         `
     },
     {
         nome: 'Builds',
         sql: `
-            CREATE TABLE IF NOT EXISTS Builds (
-                Id           INT           AUTO_INCREMENT PRIMARY KEY,
-                EmailDestino VARCHAR(255)  NOT NULL,
-                Objetivo     TEXT          NOT NULL,
-                Orcamento    DECIMAL(10,2) NOT NULL,
-                TotalGasto   DECIMAL(10,2) NULL,
-                Economia     DECIMAL(10,2) NULL,
-                ResumoGeral  TEXT          NULL,
-                DataCriacao  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_email (EmailDestino)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            CREATE TABLE IF NOT EXISTS "Builds" (
+                "Id"           SERIAL        PRIMARY KEY,
+                "EmailDestino" VARCHAR(255)  NOT NULL,
+                "Objetivo"     TEXT          NOT NULL,
+                "Orcamento"    DECIMAL(10,2) NOT NULL,
+                "TotalGasto"   DECIMAL(10,2) NULL,
+                "Economia"     DECIMAL(10,2) NULL,
+                "ResumoGeral"  TEXT          NULL,
+                "DataCriacao"  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+            )
         `
     },
     {
         nome: 'BuildComponentes',
         sql: `
-            CREATE TABLE IF NOT EXISTS BuildComponentes (
-                Id            INT           AUTO_INCREMENT PRIMARY KEY,
-                BuildId       INT           NOT NULL,
-                Componente    VARCHAR(100)  NULL,
-                Produto       VARCHAR(255)  NULL,
-                Preco         DECIMAL(10,2) NULL,
-                Loja          VARCHAR(100)  NULL,
-                Url           TEXT          NULL,
-                Disponivel    TINYINT(1)    DEFAULT 1,
-                Justificativa TEXT          NULL,
-                FOREIGN KEY (BuildId) REFERENCES Builds(Id) ON DELETE CASCADE,
-                INDEX idx_build (BuildId)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            CREATE TABLE IF NOT EXISTS "BuildComponentes" (
+                "Id"            SERIAL        PRIMARY KEY,
+                "BuildId"       INT           NOT NULL,
+                "Componente"    VARCHAR(100)  NULL,
+                "Produto"       VARCHAR(255)  NULL,
+                "Preco"         DECIMAL(10,2) NULL,
+                "Loja"          VARCHAR(100)  NULL,
+                "Url"           TEXT          NULL,
+                "Disponivel"    BOOLEAN       DEFAULT TRUE,
+                "Justificativa" TEXT          NULL,
+                FOREIGN KEY ("BuildId") REFERENCES "Builds"("Id") ON DELETE CASCADE
+            )
         `
     },
     {
         nome: 'ScrapingLog',
         sql: `
-            CREATE TABLE IF NOT EXISTS ScrapingLog (
-                Id         INT           AUTO_INCREMENT PRIMARY KEY,
-                Componente VARCHAR(255)  NOT NULL,
-                Loja       VARCHAR(100)  NOT NULL,
-                Sucesso    TINYINT(1)    DEFAULT 0,
-                Preco      DECIMAL(10,2) NULL,
-                Erro       TEXT          NULL,
-                DataHora   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_loja (Loja),
-                INDEX idx_data (DataHora)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            CREATE TABLE IF NOT EXISTS "ScrapingLog" (
+                "Id"         SERIAL        PRIMARY KEY,
+                "Componente" VARCHAR(255)  NOT NULL,
+                "Loja"       VARCHAR(100)  NOT NULL,
+                "Sucesso"    BOOLEAN       DEFAULT FALSE,
+                "Preco"      DECIMAL(10,2) NULL,
+                "Erro"       TEXT          NULL,
+                "DataHora"   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+            )
         `
     },
     {
         nome: 'Sessoes',
         sql: `
-            CREATE TABLE IF NOT EXISTS Sessoes (
-                Id        INT          AUTO_INCREMENT PRIMARY KEY,
-                UsuarioId INT          NOT NULL,
-                Token     VARCHAR(255) NOT NULL UNIQUE,
-                CriadoEm  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-                ExpiraEm  TIMESTAMP    NOT NULL,
-                FOREIGN KEY (UsuarioId) REFERENCES Usuarios(Id) ON DELETE CASCADE,
-                INDEX idx_token (Token)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            CREATE TABLE IF NOT EXISTS "Sessoes" (
+                "Id"        SERIAL       PRIMARY KEY,
+                "UsuarioId" INT          NOT NULL,
+                "Token"     VARCHAR(255) NOT NULL UNIQUE,
+                "CriadoEm"  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+                "ExpiraEm"  TIMESTAMP    NOT NULL,
+                FOREIGN KEY ("UsuarioId") REFERENCES "Usuarios"("Id") ON DELETE CASCADE
+            )
         `
     }
 ];
 
+const INDICES = [
+    `CREATE INDEX IF NOT EXISTS idx_builds_email ON "Builds"("EmailDestino")`,
+    `CREATE INDEX IF NOT EXISTS idx_componentes_build ON "BuildComponentes"("BuildId")`,
+    `CREATE INDEX IF NOT EXISTS idx_scraping_loja ON "ScrapingLog"("Loja")`,
+    `CREATE INDEX IF NOT EXISTS idx_scraping_data ON "ScrapingLog"("DataHora")`,
+    `CREATE INDEX IF NOT EXISTS idx_sessoes_token ON "Sessoes"("Token")`,
+];
+
 async function inicializarBanco() {
-    const dbHost     = process.env.MYSQL_HOST     || 'localhost';
-    const dbPort     = parseInt(process.env.MYSQL_PORT) || 3306;
-    const dbUser     = process.env.MYSQL_USER     || 'root';
-    const dbPassword = process.env.MYSQL_PASSWORD || '';
-    const dbName     = process.env.MYSQL_DATABASE || 'Pc_Builder_Unico';
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+        throw new Error('DATABASE_URL não configurada nas variáveis de ambiente.');
+    }
 
-    // 1) Conecta SEM database para garantir que ele exista
-    const bootstrap = await mysql.createConnection({
-        host: dbHost, port: dbPort, user: dbUser, password: dbPassword
-    });
-    await bootstrap.query(
-        `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-    await bootstrap.end();
-    console.log(`✅ Database "${dbName}" garantido.`);
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
 
-    // 2) Pool já apontando para o database
-    pool = mysql.createPool({
-        host: dbHost, port: dbPort, user: dbUser, password: dbPassword,
-        database: dbName,
-        waitForConnections: true,
-        connectionLimit:    10,
-        queueLimit:         0,
+    pool = new Pool({
+        connectionString,
+        ssl: isLocal ? false : { rejectUnauthorized: false },
+        max: 10,
     });
 
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        console.log('✅ Conexão com MySQL estabelecida.');
+        console.log('✅ Conexão com PostgreSQL estabelecida.');
 
-        // 3) Cria cada tabela em try/catch isolado — se uma falhar, as outras continuam
         const criadas = [];
         const falhas  = [];
         for (const tabela of TABELAS) {
             try {
-                await conn.query(tabela.sql);
+                await client.query(tabela.sql);
                 criadas.push(tabela.nome);
             } catch (errTab) {
                 falhas.push({ nome: tabela.nome, erro: errTab.message });
@@ -149,37 +139,39 @@ async function inicializarBanco() {
             }
         }
 
-        // 4) Garante colunas extras em Usuarios (caso tabela já existisse com schema antigo)
+        for (const indice of INDICES) {
+            try { await client.query(indice); } catch (_) { /* índice opcional */ }
+        }
+
+        // Garante colunas extras em Usuarios (caso tabela já existisse com schema antigo)
         try {
-            const [cols] = await conn.query(`
-                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Usuarios'
+            const { rows: cols } = await client.query(`
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'Usuarios'
             `);
-            const nomesCols = cols.map(c => c.COLUMN_NAME);
+            const nomesCols = cols.map(c => c.column_name);
             if (!nomesCols.includes('UltimoLogin')) {
-                await conn.query(`ALTER TABLE Usuarios ADD COLUMN UltimoLogin TIMESTAMP NULL DEFAULT NULL`);
+                await client.query(`ALTER TABLE "Usuarios" ADD COLUMN "UltimoLogin" TIMESTAMP NULL DEFAULT NULL`);
             }
             if (!nomesCols.includes('Nome')) {
-                await conn.query(`ALTER TABLE Usuarios ADD COLUMN Nome VARCHAR(150) NULL AFTER Senha`);
+                await client.query(`ALTER TABLE "Usuarios" ADD COLUMN "Nome" VARCHAR(150) NULL`);
             }
         } catch (errAlter) {
             console.warn('⚠️  Erro ao verificar colunas extras:', errAlter.message);
         }
 
-        // 5) Lista o que existe no banco para confirmação
-        const [tabelasExistentes] = await conn.query(`SHOW TABLES`);
-        const lista = tabelasExistentes.map(r => Object.values(r)[0]);
-        console.log(`✅ Tabelas no banco "${dbName}": ${lista.join(', ') || '(nenhuma)'}`);
+        const { rows: tabelasExistentes } = await client.query(
+            `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`
+        );
+        const lista = tabelasExistentes.map(r => r.tablename);
+        console.log(`✅ Tabelas no banco: ${lista.join(', ') || '(nenhuma)'}`);
         if (falhas.length > 0) {
             console.warn(`⚠️  ${falhas.length} tabela(s) falharam:`, falhas);
         } else {
             console.log(`✅ Todas as ${criadas.length} tabelas verificadas/criadas com sucesso.`);
         }
-
-        conn.release();
-    } catch (err) {
-        conn.release();
-        throw err;
+    } finally {
+        client.release();
     }
 }
 
@@ -201,21 +193,21 @@ app.get('/api/status', (req, res) => {
 app.post('/api/cadastro', verificarBanco, async (req, res) => {
     try {
         const { email, senha, nome } = req.body;
-        
+
         if (!email || !senha) return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha são obrigatórios.' });
         if (!EMAIL_REGEX.test(email.trim())) return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail inválido.' });
         if (senha.length < 8) return res.status(400).json({ sucesso: false, mensagem: 'A senha deve ter pelo menos 8 caracteres.' });
 
-        const [existente] = await pool.execute('SELECT Id FROM Usuarios WHERE Email = ?', [email.trim()]);
+        const { rows: existente } = await pool.query('SELECT "Id" FROM "Usuarios" WHERE "Email" = $1', [email.trim()]);
         if (existente.length > 0) return res.status(409).json({ sucesso: false, mensagem: 'Este e-mail já está cadastrado!' });
 
         const hash = bcrypt.hashSync(senha, 10);
-        const [result] = await pool.execute(
-            'INSERT INTO Usuarios (Email, Senha, Nome) VALUES (?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO "Usuarios" ("Email", "Senha", "Nome") VALUES ($1, $2, $3) RETURNING "Id"',
             [email.trim(), hash, nome?.trim() || null]
         );
 
-        res.status(201).json({ sucesso: true, mensagem: 'Conta criada com sucesso!', usuario: { id: result.insertId, email: email.trim() } });
+        res.status(201).json({ sucesso: true, mensagem: 'Conta criada com sucesso!', usuario: { id: rows[0].Id, email: email.trim() } });
     } catch (erro) {
         console.error('Erro no cadastro:', erro.message);
         res.status(500).json({ sucesso: false, mensagem: 'Erro ao criar a conta.' });
@@ -231,11 +223,11 @@ app.post('/api/login', verificarBanco, async (req, res) => {
         if (!email || !senha) return res.status(400).json({ sucesso: false, mensagem: 'E-mail e senha são obrigatórios.' });
         if (!EMAIL_REGEX.test(email.trim())) return res.status(400).json({ sucesso: false, mensagem: 'Formato de e-mail inválido.' });
 
-        const [rows] = await pool.execute('SELECT Id, Email, Senha, Nome FROM Usuarios WHERE Email = ?', [email.trim()]);
+        const { rows } = await pool.query('SELECT "Id", "Email", "Senha", "Nome" FROM "Usuarios" WHERE "Email" = $1', [email.trim()]);
         const usuario = rows[0];
 
         if (usuario && bcrypt.compareSync(senha, usuario.Senha)) {
-            await pool.execute('UPDATE Usuarios SET UltimoLogin = NOW() WHERE Id = ?', [usuario.Id]);
+            await pool.query('UPDATE "Usuarios" SET "UltimoLogin" = NOW() WHERE "Id" = $1', [usuario.Id]);
             res.json({
                 sucesso: true,
                 mensagem: 'Login efetuado com sucesso!',
@@ -258,14 +250,14 @@ app.get('/api/historico', verificarBanco, async (req, res) => {
         const { email } = req.query;
         if (!email || !EMAIL_REGEX.test(email)) return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
 
-        const [builds] = await pool.execute(
-            'SELECT Id, Objetivo, Orcamento, TotalGasto, Economia, DataCriacao FROM Builds WHERE EmailDestino = ? ORDER BY DataCriacao DESC LIMIT 20',
+        const { rows: builds } = await pool.query(
+            'SELECT "Id", "Objetivo", "Orcamento", "TotalGasto", "Economia", "DataCriacao" FROM "Builds" WHERE "EmailDestino" = $1 ORDER BY "DataCriacao" DESC LIMIT 20',
             [email.trim()]
         );
 
         for (const build of builds) {
-            const [componentes] = await pool.execute(
-                'SELECT Componente, Produto, Preco, Loja, Url, Disponivel FROM BuildComponentes WHERE BuildId = ?',
+            const { rows: componentes } = await pool.query(
+                'SELECT "Componente", "Produto", "Preco", "Loja", "Url", "Disponivel" FROM "BuildComponentes" WHERE "BuildId" = $1',
                 [build.Id]
             );
             build.componentes = componentes;
@@ -284,19 +276,19 @@ app.get('/api/historico', verificarBanco, async (req, res) => {
 async function salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada }) {
     if (!pool || !buildRecomendada) return;
     try {
-        const [result] = await pool.execute(
-            'INSERT INTO Builds (EmailDestino, Objetivo, Orcamento, TotalGasto, Economia, ResumoGeral) VALUES (?, ?, ?, ?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO "Builds" ("EmailDestino", "Objetivo", "Orcamento", "TotalGasto", "Economia", "ResumoGeral") VALUES ($1, $2, $3, $4, $5, $6) RETURNING "Id"',
             [emailDestino, objetivo, orcamento,
              buildRecomendada.totalGasto || null,
              buildRecomendada.economia   || null,
              buildRecomendada.resumoGeral || null]
         );
-        const buildId = result.insertId;
+        const buildId = rows[0].Id;
         for (const c of (buildRecomendada.configuracao || [])) {
-            await pool.execute(
-                'INSERT INTO BuildComponentes (BuildId, Componente, Produto, Preco, Loja, Url, Disponivel, Justificativa) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            await pool.query(
+                'INSERT INTO "BuildComponentes" ("BuildId", "Componente", "Produto", "Preco", "Loja", "Url", "Disponivel", "Justificativa") VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
                 [buildId, c.componente || null, c.produto || null, c.preco || null,
-                 c.loja || null, c.url || null, c.disponivel !== false ? 1 : 0, c.justificativa || null]
+                 c.loja || null, c.url || null, c.disponivel !== false, c.justificativa || null]
             );
         }
     } catch (erro) {
@@ -307,9 +299,9 @@ async function salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada
 async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
     if (!pool) return;
     try {
-        await pool.execute(
-            'INSERT INTO ScrapingLog (Componente, Loja, Sucesso, Preco, Erro) VALUES (?, ?, ?, ?, ?)',
-            [componente, loja, sucesso ? 1 : 0, preco || null, erro || null]
+        await pool.query(
+            'INSERT INTO "ScrapingLog" ("Componente", "Loja", "Sucesso", "Preco", "Erro") VALUES ($1, $2, $3, $4, $5)',
+            [componente, loja, !!sucesso, preco || null, erro || null]
         );
     } catch (_) { /* log não crítico */ }
 }

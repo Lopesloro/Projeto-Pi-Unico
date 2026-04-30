@@ -34,8 +34,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
-    "mysql2": "^3.22.2",
     "openai": "^4.104.0",
+    "pg": "^8.20.0",
     "puppeteer": "^22.15.0"
   },
   "engines": {
