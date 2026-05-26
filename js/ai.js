@@ -1,109 +1,253 @@
 // ============================================
-// AI.JS - Comunicação com a API Gemini (via proxy backend)
+// AI.JS - Comunicação com a API (via proxy backend /api/gemini → Mistral)
 // ============================================
 
-async function consultarIA(orcamento, objetivo, estoque) {
-    const url = '/api/gemini';
+/**
+ * Formata o catálogo de componentes em texto estruturado para o prompt.
+ * Inclui todos os dados técnicos relevantes para a IA tomar decisões.
+ */
+function _formatarCatalogo(estoque) {
+    const linhas = [];
 
-    const prompt = `
-Você é um consultor sênior de hardware com foco no mercado brasileiro.
-Seu objetivo: montar a MELHOR build POSSÍVEL para o cliente, dentro do orçamento.
-
-DADOS DO CLIENTE:
-- 💰 ORÇAMENTO MÁXIMO (LIMITE INVIOLÁVEL): R$ ${orcamento}
-- 🎯 Objetivo/Uso: "${objetivo}"
-
-ESTOQUE DISPONÍVEL (use SOMENTE os IDs e preços deste JSON — não invente nada):
-${JSON.stringify(estoque)}
-
-🚨 REGRA #1 — ORÇAMENTO É TETO ABSOLUTO 🚨
-A soma dos campos "preco" de CPU + GPU (se houver) + Placa-Mãe + RAM + Fonte + Armazenamento DEVE ser ≤ R$ ${orcamento}.
-Antes de responder, calcule o total e CONFIRME que cabe. Se passar, troque por modelos mais baratos do MESMO JSON até caber.
-Se mesmo assim não couber, REMOVA a GPU (gpu:null) e use uma CPU com video_integrado=true.
-
-🚨 REGRA #2 — APROVEITE O ORÇAMENTO AO MÁXIMO 🚨
-NÃO entregue uma build muito abaixo do teto se houver opções melhores que cabem.
-Procure usar pelo menos 85% do orçamento sempre que possível, priorizando o componente que mais impacta o objetivo do cliente:
-- "Games" / "jogos" → priorize GPU forte (e CPU compatível); RAM mínimo 16GB
-- "Edição de vídeo" / "renderização" / "streaming" → priorize CPU com mais núcleos; RAM 16-32GB; SSD NVMe
-- "Programação" / "uso geral" / "escritório" → CPU equilibrada com vídeo integrado; SSD; pode dispensar GPU
-- Sem GPU dedicada? Escolha CPU com video_integrado=true.
-
-🚨 REGRA #3 — COMPATIBILIDADE OBRIGATÓRIA 🚨
-- socket da CPU == socket da placa-mãe
-- tipo da RAM == tipo_memoria da placa-mãe
-- Fonte: potencia_w ≥ (tdp_cpu + tdp_gpu) × 1.2  (com margem de segurança)
-- Sempre inclua armazenamento (preferencialmente SSD).
-
-🚨 REGRA #4 — COERÊNCIA DE VALORES 🚨
-- Use APENAS peças do JSON acima.
-- NÃO mencione preços, valores ou totais no HTML — o sistema calcula e exibe os valores reais a partir do catálogo. Se você falar preço errado, gera divergência.
-- O HTML deve focar em JUSTIFICATIVA TÉCNICA: por que cada peça é a melhor escolha para o objetivo, e como a build se equilibra (ex: "CPU e GPU pareados sem gargalo").
-
-FORMATO DE RESPOSTA — siga EXATAMENTE este padrão, sem texto antes ou depois:
-
-##COMPONENTES##
-cpu:[ID_EXATO_DO_PROCESSADOR],gpu:[ID_EXATO_DA_GPU_ou_null],mobo:[ID_EXATO_DA_PLACA_MAE],ram:[ID_EXATO_DA_MEMORIA],fonte:[ID_EXATO_DA_FONTE],storage:[ID_EXATO_DO_ARMAZENAMENTO]
-##HTML##
-[Recomendação usando APENAS tags HTML: h3, ul, li, strong, p]
-[Uma seção h3 por categoria (Processador, Placa-Mãe, Memória, Vídeo, Fonte, Armazenamento) com 1-2 frases de justificativa técnica em <p> ou <li>]
-[Encerre com um <p> de resumo geral: como a build atende ao objetivo. SEM citar preços/totais.]
-##FIM##
-
-REGRAS DO HTML:
-- PROIBIDO Markdown (*, **, #). Use só tags HTML.
-- PROIBIDO citar valores em reais, total, "R$", "custou", "ficou em".
-`;
-
-    try {
-        const resposta = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
-
-        const dados = await resposta.json();
-
-        if (!resposta.ok) {
-            const mensagemErro = dados.error?.message || "Erro desconhecido na API.";
-            throw new Error(mensagemErro);
+    if (estoque.processadores?.length) {
+        linhas.push('── PROCESSADORES ──');
+        for (const p of estoque.processadores) {
+            linhas.push(
+                `  ID: ${p.id} | ${p.nome} | R$ ${Number(p.preco).toFixed(2)}` +
+                ` | Socket: ${p.socket} | TDP: ${p.tdp_w}W` +
+                ` | Vídeo Integrado: ${p.video_integrado ? 'SIM' : 'NÃO'} | Score: ${p.score}`
+            );
         }
-
-        const textoGerado = dados.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!textoGerado) throw new Error("A IA não retornou nenhuma resposta.");
-
-        return textoGerado;
-
-    } catch (erro) {
-        console.error("Erro ao consultar a IA:", erro);
-        throw erro;
     }
+
+    if (estoque.placas_mae?.length) {
+        linhas.push('\n── PLACAS-MÃE ──');
+        for (const m of estoque.placas_mae) {
+            linhas.push(
+                `  ID: ${m.id} | ${m.nome} | R$ ${Number(m.preco).toFixed(2)}` +
+                ` | Socket: ${m.socket} | Aceita: ${m.tipo_memoria}`
+            );
+        }
+    }
+
+    if (estoque.memorias?.length) {
+        linhas.push('\n── MEMÓRIAS RAM ──');
+        for (const r of estoque.memorias) {
+            linhas.push(
+                `  ID: ${r.id} | ${r.nome} | R$ ${Number(r.preco).toFixed(2)}` +
+                ` | Tipo: ${r.tipo} | Capacidade: ${r.capacidade_gb}GB`
+            );
+        }
+    }
+
+    if (estoque.placas_video?.length) {
+        linhas.push('\n── PLACAS DE VÍDEO ──');
+        for (const g of estoque.placas_video) {
+            linhas.push(
+                `  ID: ${g.id} | ${g.nome} | R$ ${Number(g.preco).toFixed(2)}` +
+                ` | TDP: ${g.tdp_w}W | Score: ${g.score}`
+            );
+        }
+    }
+
+    if (estoque.armazenamento?.length) {
+        linhas.push('\n── ARMAZENAMENTO ──');
+        for (const s of estoque.armazenamento) {
+            linhas.push(
+                `  ID: ${s.id} | ${s.nome} | R$ ${Number(s.preco).toFixed(2)}`
+            );
+        }
+    }
+
+    if (estoque.fontes?.length) {
+        linhas.push('\n── FONTES ──');
+        for (const f of estoque.fontes) {
+            linhas.push(
+                `  ID: ${f.id} | ${f.nome} | R$ ${Number(f.preco).toFixed(2)}` +
+                ` | Potência: ${f.potencia_w}W`
+            );
+        }
+    }
+
+    return linhas.join('\n');
 }
 
-// Separa a resposta da IA em IDs de componentes + HTML de recomendação
+/**
+ * Monta o prompt para a IA com todas as regras e o catálogo completo.
+ */
+function _buildPrompt(orcamento, objetivo, estoque) {
+    const catalogo = _formatarCatalogo(estoque);
+
+    return `Você é um especialista sênior em montagem de PCs para o mercado brasileiro.
+Sua missão: selecionar a MELHOR build possível para o cliente, respeitando o orçamento e maximizando o desempenho para o objetivo informado.
+
+═══════════════════════════════════════════
+DADOS DO CLIENTE
+═══════════════════════════════════════════
+💰 ORÇAMENTO MÁXIMO (TETO ABSOLUTO): R$ ${orcamento}
+🎯 Objetivo / Uso: "${objetivo}"
+
+═══════════════════════════════════════════
+CATÁLOGO DE COMPONENTES DISPONÍVEIS
+(Use APENAS estes IDs — não invente nenhum)
+═══════════════════════════════════════════
+${catalogo}
+
+═══════════════════════════════════════════
+REGRAS OBRIGATÓRIAS
+═══════════════════════════════════════════
+
+REGRA 1 — ORÇAMENTO É TETO ABSOLUTO:
+• Total = preco_cpu + preco_mobo + preco_ram + preco_storage + preco_fonte + preco_gpu (se houver)
+• Esse total DEVE ser ≤ R$ ${orcamento}. Sem exceções.
+• Se não couber GPU dedicada, use CPU com Vídeo Integrado = SIM e defina gpu como null.
+
+REGRA 2 — MAXIMIZE O ORÇAMENTO (use 85-100% do teto):
+Priorize o componente que mais impacta o objetivo:
+• "Games" / "Jogos": GPU de maior score possível + CPU equilibrada + RAM ≥ 16 GB
+• "Edição de vídeo" / "Streaming" / "Render" / "3D": CPU com muitos núcleos + RAM 16-32 GB + SSD NVMe rápido
+• "Programação" / "Uso geral" / "Escritório" / "Estudo": CPU equilibrada (preferencialmente com vídeo integrado) + SSD; GPU opcional
+• Budget apertado: remova GPU dedicada e use CPU com Vídeo Integrado = SIM
+
+REGRA 3 — COMPATIBILIDADE OBRIGATÓRIA:
+• Socket da CPU == Socket da Placa-Mãe (ex: AM4 ↔ AM4, LGA1700 ↔ LGA1700)
+• Tipo de RAM == Tipo aceito pela Placa-Mãe (DDR4 ou DDR5)
+• Potência da Fonte ≥ (TDP_CPU + TDP_GPU) × 1.3   [margem de segurança de 30%]
+• Se sem GPU: Fonte ≥ TDP_CPU × 1.3
+
+REGRA 4 — EQUILÍBRIO CPU × GPU (evite bottleneck):
+• Fórmula de bottleneck: ((score_gpu − score_cpu) / score_gpu) × 100
+• Se resultado > 30% → gargalo severo → escolha CPU com score mais próximo da GPU
+• Se resultado > 20% → gargalo moderado → tente ajustar
+• Alvo ideal: diferença de score ≤ 1.5 pontos entre CPU e GPU
+
+REGRA 5 — USE APENAS IDs DO CATÁLOGO:
+• Copie os IDs exatamente como aparecem acima (ex: "cpu_i5_12400f", "gpu_rtx3060")
+• NÃO arredonde nem estime preços — use exatamente os valores listados
+
+═══════════════════════════════════════════
+PROCESSO DE RACIOCÍNIO (siga passo a passo)
+═══════════════════════════════════════════
+1. Classifique o objetivo do cliente (games / edição / geral / etc.)
+2. Identifique o componente principal a priorizar
+3. Aloque o budget: reserve verba para componente principal, depois distribua o restante
+4. Escolha CPU e Placa-Mãe com socket compatível
+5. Escolha RAM compatível com a Placa-Mãe (DDR4 ou DDR5)
+6. Escolha GPU (se couber e for útil); verifique bottleneck com a CPU
+7. Escolha Armazenamento (prefira NVMe para games/edição)
+8. Escolha Fonte: calcule TDP total × 1.3 e selecione a menor fonte suficiente
+9. Some todos os preços → confirme que total ≤ R$ ${orcamento}
+10. Se estourar, troque pelo item mais barato compatível e recalcule
+
+═══════════════════════════════════════════
+FORMATO DE RESPOSTA (JSON puro — sem markdown, sem texto fora do JSON)
+═══════════════════════════════════════════
+{
+  "raciocinio": "Resumo em 2-3 frases do processo de seleção e trade-offs feitos",
+  "componentes": {
+    "cpu":     "ID_EXATO_DO_PROCESSADOR",
+    "mobo":    "ID_EXATO_DA_PLACA_MAE",
+    "ram":     "ID_EXATO_DA_MEMORIA",
+    "gpu":     "ID_EXATO_DA_GPU_ou_null",
+    "storage": "ID_EXATO_DO_ARMAZENAMENTO",
+    "fonte":   "ID_EXATO_DA_FONTE"
+  },
+  "total": 0000.00,
+  "economia": 000.00,
+  "html": "<h3>Processador</h3><p><strong>NOME</strong> — JUSTIFICATIVA TÉCNICA SEM MENCIONAR PREÇO</p><h3>Placa-Mãe</h3><p>...</p><h3>Memória RAM</h3><p>...</p><h3>Placa de Vídeo</h3><p>...</p><h3>Armazenamento</h3><p>...</p><h3>Fonte</h3><p>...</p><p>RESUMO GERAL: como a build atende ao objetivo do cliente.</p>"
+}
+
+Regras do campo "html":
+- Tags permitidas: h3, p, strong, ul, li
+- PROIBIDO citar valores em reais, "R$", totais ou preços — o sistema calcula e exibe automaticamente
+- Foque em justificativa TÉCNICA: por que essa peça é a melhor escolha para o objetivo
+- Se gpu = null: em h3 "Placa de Vídeo" explique que o vídeo integrado da CPU é suficiente para o uso`;
+}
+
+/**
+ * Envia o prompt para a IA via proxy e retorna o texto gerado.
+ */
+async function consultarIA(orcamento, objetivo, estoque) {
+    const url = '/api/gemini';
+    const prompt = _buildPrompt(orcamento, objetivo, estoque);
+
+    const resposta = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+        })
+    });
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+        const mensagemErro = dados.error?.message || 'Erro desconhecido na API.';
+        throw new Error(mensagemErro);
+    }
+
+    const textoGerado = dados.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textoGerado) throw new Error('A IA não retornou nenhuma resposta.');
+
+    return textoGerado;
+}
+
+/**
+ * Faz o parse da resposta da IA.
+ * Tenta JSON (novo formato) primeiro; cai no formato legado ##COMPONENTES## se necessário.
+ */
 function parseRespostaIA(texto) {
+    // 1) Limpar possíveis blocos markdown
+    const textoLimpo = texto
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+    // 2) Tentar parse JSON (novo formato)
+    try {
+        const parsed = JSON.parse(textoLimpo);
+
+        if (parsed.componentes && typeof parsed.componentes === 'object') {
+            const c = parsed.componentes;
+            const ids = {
+                cpu:     c.cpu     || null,
+                gpu:     (c.gpu === 'null' || !c.gpu) ? null : c.gpu,
+                mobo:    c.mobo    || null,
+                ram:     c.ram     || null,
+                fonte:   c.fonte   || null,
+                storage: c.storage || null,
+            };
+            const html = (parsed.html || '').replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
+            return { ids, html };
+        }
+    } catch (_) {
+        // Não é JSON válido — tentar formato legado
+    }
+
+    // 3) Fallback: formato legado com delimitadores ##COMPONENTES## / ##HTML## / ##FIM##
+    console.warn('[AI] Resposta fora do formato JSON. Tentando parse legado...');
+
     const idsMatch  = texto.match(/##COMPONENTES##\s*([\s\S]*?)\s*##HTML##/);
     const htmlMatch = texto.match(/##HTML##\s*([\s\S]*?)\s*##FIM##/);
 
-    let ids = { cpu: null, gpu: null, mobo: null, ram: null, fonte: null, storage: null };
+    const ids = { cpu: null, gpu: null, mobo: null, ram: null, fonte: null, storage: null };
 
     if (idsMatch) {
         idsMatch[1].trim().split(',').forEach(part => {
-            const [key, value] = part.trim().split(':');
-            if (key && value) ids[key.trim()] = value.trim() === 'null' ? null : value.trim();
+            const sepIdx = part.indexOf(':');
+            if (sepIdx === -1) return;
+            const key   = part.slice(0, sepIdx).trim();
+            const value = part.slice(sepIdx + 1).trim();
+            if (key in ids) ids[key] = (value === 'null' || !value) ? null : value;
         });
     }
 
-    // Fallback: se o modelo não seguiu o formato, usa o texto inteiro como HTML
     let html = htmlMatch
         ? htmlMatch[1].trim()
         : texto.replace(/##COMPONENTES##[\s\S]*?##HTML##/g, '').replace(/##FIM##/g, '').trim();
 
-    // Limpa possíveis blocos de código markdown que o modelo pode ter incluído
-    html = html.replace(/```html\s*/gi, '').replace(/```\s*/gi, '');
+    html = html.replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
 
     return { ids, html };
 }
