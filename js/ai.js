@@ -10,12 +10,18 @@ function _formatarCatalogo(estoque) {
     const linhas = [];
 
     if (estoque.processadores?.length) {
-        linhas.push('── PROCESSADORES ──');
-        for (const p of estoque.processadores) {
+        linhas.push('── PROCESSADORES ── (menor R$/score = melhor custo-benefício)');
+        // Ordena por custo-benefício (R$ por ponto de score) para facilitar a escolha
+        const cpusOrdenados = [...estoque.processadores].sort(
+            (a, b) => (Number(a.preco) / a.score) - (Number(b.preco) / b.score)
+        );
+        for (const p of cpusOrdenados) {
+            const custoScore = (Number(p.preco) / p.score).toFixed(0);
             linhas.push(
                 `  ID: ${p.id} | ${p.nome} | R$ ${Number(p.preco).toFixed(2)}` +
                 ` | Socket: ${p.socket} | TDP: ${p.tdp_w}W` +
-                ` | Vídeo Integrado: ${p.video_integrado ? 'SIM' : 'NÃO'} | Score: ${p.score}`
+                ` | Vídeo Integrado: ${p.video_integrado ? 'SIM' : 'NÃO'}` +
+                ` | Score: ${p.score} | Custo/Score: R$${custoScore}/pt ← menor = melhor valor`
             );
         }
     }
@@ -41,11 +47,16 @@ function _formatarCatalogo(estoque) {
     }
 
     if (estoque.placas_video?.length) {
-        linhas.push('\n── PLACAS DE VÍDEO ──');
-        for (const g of estoque.placas_video) {
+        linhas.push('\n── PLACAS DE VÍDEO ── (menor R$/score = melhor custo-benefício)');
+        // Ordena por custo-benefício para facilitar a escolha da GPU ideal
+        const gpusOrdenadas = [...estoque.placas_video].sort(
+            (a, b) => (Number(a.preco) / a.score) - (Number(b.preco) / b.score)
+        );
+        for (const g of gpusOrdenadas) {
+            const custoScore = (Number(g.preco) / g.score).toFixed(0);
             linhas.push(
                 `  ID: ${g.id} | ${g.nome} | R$ ${Number(g.preco).toFixed(2)}` +
-                ` | TDP: ${g.tdp_w}W | Score: ${g.score}`
+                ` | TDP: ${g.tdp_w}W | Score: ${g.score} | Custo/Score: R$${custoScore}/pt ← menor = melhor valor`
             );
         }
     }
@@ -103,11 +114,36 @@ REGRA 1 — ORÇAMENTO É TETO ABSOLUTO:
 • Se não couber GPU dedicada, use CPU com Vídeo Integrado = SIM e defina gpu como null.
 
 REGRA 2 — MAXIMIZE O ORÇAMENTO (use 85-100% do teto):
-Priorize o componente que mais impacta o objetivo:
-• "Games" / "Jogos": GPU de maior score possível + CPU equilibrada + RAM ≥ 16 GB
-• "Edição de vídeo" / "Streaming" / "Render" / "3D": CPU com muitos núcleos + RAM 16-32 GB + SSD NVMe rápido
-• "Programação" / "Uso geral" / "Escritório" / "Estudo": CPU equilibrada (preferencialmente com vídeo integrado) + SSD; GPU opcional
-• Budget apertado: remova GPU dedicada e use CPU com Vídeo Integrado = SIM
+Distribua o orçamento seguindo estas proporções por tipo de uso:
+
+▸ GAMES / JOGOS (prioridade: GPU)
+  GPU:     45-55% do orçamento → escolha maior score/R$ possível
+  CPU:     18-22% → compatível com GPU, sem gargalo (score próximo da GPU)
+  Placa-Mãe: 12-15%
+  RAM:      8-10% → mínimo 16 GB DDR4
+  Fonte:    6-8%  → TDP_GPU + TDP_CPU × 1.3
+  Storage:  5-7%  → SSD NVMe preferível
+
+▸ EDIÇÃO / STREAMING / RENDER (prioridade: CPU + RAM)
+  CPU:     30-35% do orçamento → maior número de núcleos disponível
+  RAM:     15-20% → mínimo 16 GB, prefira 32 GB
+  GPU:     20-25% → moderada (necessária para render/export acelerado)
+  Placa-Mãe: 12-15%
+  Storage:  8-10% → SSD NVMe rápido obrigatório
+  Fonte:    6-8%
+
+▸ PROGRAMAÇÃO / USO GERAL / ESCRITÓRIO (prioridade: CPU equilibrada)
+  CPU:     30-35% → com vídeo integrado se possível
+  Placa-Mãe: 15-18%
+  RAM:     10-12% → 16 GB suficiente
+  Storage:  8-10% → SSD obrigatório
+  Fonte:    6-8%
+  GPU:      0% → dispensável com vídeo integrado
+
+▸ COMO ESCOLHER O MELHOR CUSTO-BENEFÍCIO:
+  Ordene por "Custo/Score" (menor = melhor valor) para CPU e GPU.
+  Prefira o componente com menor R$/ponto dentro do budget disponível.
+  Não pague mais por pequena diferença de score se o budget estourar.
 
 REGRA 3 — COMPATIBILIDADE OBRIGATÓRIA:
 • Socket da CPU == Socket da Placa-Mãe (ex: AM4 ↔ AM4, LGA1700 ↔ LGA1700)

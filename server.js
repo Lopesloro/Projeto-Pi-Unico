@@ -356,12 +356,25 @@ app.post('/api/gemini', async (req, res) => {
         const userText = contents.flatMap(c => c.parts.map(p => p.text)).join('\n');
         const resposta = await axios.post('https://api.mistral.ai/v1/chat/completions', {
             model: 'mistral-small-latest',
-            messages: [{ role: 'user', content: userText }]
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'Você é um especialista sênior em montagem de PCs para o mercado brasileiro. ' +
+                        'Analise o catálogo e o orçamento fornecidos e selecione a MELHOR combinação possível. ' +
+                        'Responda SEMPRE em JSON puro e válido, sem markdown, sem texto fora do JSON.',
+                },
+                { role: 'user', content: userText },
+            ],
+            temperature: 0.2,
+            max_tokens: 2500,
+            response_format: { type: 'json_object' },
         }, {
             headers: {
                 'Authorization': `Bearer ${mistralKey}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            timeout: 60000,
         });
 
         const texto = resposta.data.choices[0].message.content;
