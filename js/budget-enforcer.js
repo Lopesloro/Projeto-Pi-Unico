@@ -106,13 +106,21 @@ function _upgradeComponente(ids, estoque, key, limite) {
     const precoAtual = atual ? (Number(atual.preco) || 0) : 0;
 
     // Candidatos: mais caros que o atual, dentro do surplus disponível
-    // Ordenados do mais caro ao mais barato → pega o MELHOR que cabe
+    // GPU e CPU: ordena por melhor score primeiro (empate → mais barato)
+    // Demais: ordena pelo mais caro que cabe (melhor custo-benefício por preço)
+    const usarScore = (key === 'gpu' || key === 'cpu');
     const candidatos = [...(estoque[cat.campo] || [])]
         .filter(p => {
             const preco = Number(p.preco) || 0;
             return preco > precoAtual && (preco - precoAtual) <= surplus;
         })
-        .sort((a, b) => (b.preco || 0) - (a.preco || 0));
+        .sort((a, b) => {
+            if (usarScore && a.score != null && b.score != null) {
+                if (b.score !== a.score) return b.score - a.score;  // maior score primeiro
+                return (a.preco || 0) - (b.preco || 0);             // empate: mais barato
+            }
+            return (b.preco || 0) - (a.preco || 0);                 // mais caro primeiro
+        });
 
     for (const cand of candidatos) {
         const idsTeste  = { ...ids, [key]: cand.id };
@@ -214,8 +222,9 @@ function _buildMinimoViavel(estoque, orcamento) {
 // ─── Função principal ────────────────────────────────────────────────────────
 
 /**
- * 1. Garante que a build NÃO ultrapasse o orçamento (downgrade se necessário)
- * 2. Maximiza o uso do orçamento (upgrade peças com o surplus disponível)
+ * 1. Downgrade se o total estourou o orçamento
+ * 2. Downsize da fonte se superdimensionada (libera budget para GPU/CPU/RAM)
+ * 3. Upgrade iterativo para maximizar o uso do orçamento (GPU/CPU por score)
  * Retorna { ids, total, ajustado, dentroOrcamento, mensagem }.
  */
 function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
@@ -272,7 +281,31 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         }
     }
 
-    // ── FASE 2: Upgrade — maximiza uso do orçamento ──────────────────────────
+    // ── FASE 2: Downsize da fonte se superdimensionada → libera budget ──────────
+    // Se fonte.potencia_w > tdp_total × 1.5, troca pela menor fonte adequada
+    // e o surplus liberado é usado nos upgrades de GPU/CPU/RAM/storage.
+    const cpu   = _resolverPeca(estoque, 'cpu',  ids.cpu);
+    const gpu   = _resolverPeca(estoque, 'gpu',  ids.gpu);
+    const fonte = _resolverPeca(estoque, 'fonte', ids.fonte);
+    if (cpu && fonte) {
+        const tdpTotal  = (cpu.tdp_w || 0) + (gpu?.tdp_w || 0);
+        const minFonte  = Math.ceil(tdpTotal * 1.3);
+        if (fonte.potencia_w > tdpTotal * 1.5) {
+            // Procura a menor fonte que ainda atende o TDP mínimo
+            const fonteAdequada = [...(estoque.fontes || [])]
+                .filter(f => f.potencia_w >= minFonte && Number(f.preco) < Number(fonte.preco))
+                .sort((a, b) => (a.preco || 0) - (b.preco || 0))[0];
+            if (fonteAdequada) {
+                const idsTeste = { ...ids, fonte: fonteAdequada.id };
+                if (_compatBuild(idsTeste, estoque)) {
+                    ids.fonte = fonteAdequada.id;
+                    total = _calcularTotal(ids, estoque);
+                }
+            }
+        }
+    }
+
+    // ── FASE 3: Upgrade — maximiza uso do orçamento ──────────────────────────
     const totalAntes = _calcularTotal(ids, estoque);
     ids   = _maximizarOrcamento(ids, estoque, limite);
     total = _calcularTotal(ids, estoque);

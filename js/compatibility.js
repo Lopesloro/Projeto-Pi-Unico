@@ -27,13 +27,13 @@ function verificarCompatibilidadeMemoria(ram, mobo) {
 
 function verificarPotenciaFonte(fonte, tdpTotal) {
     if (!fonte || !tdpTotal) return { ok: false, msg: 'Dados insuficientes para verificar fonte.' };
-    const tdpMinimo = Math.ceil(tdpTotal * 1.2);
+    const tdpMinimo = Math.ceil(tdpTotal * 1.3);
     const ok = fonte.potencia_w >= tdpMinimo;
     return {
         ok,
         msg: ok
-            ? `Fonte suficiente: ${fonte.potencia_w}W (mínimo recomendado com 20% de margem: ${tdpMinimo}W)`
-            : `Fonte insuficiente: ${fonte.potencia_w}W — mínimo recomendado é ${tdpMinimo}W`
+            ? `Fonte suficiente: ${fonte.potencia_w}W (mínimo recomendado com 30% de margem: ${tdpMinimo}W)`
+            : `Fonte insuficiente: ${fonte.potencia_w}W — mínimo recomendado é ${tdpMinimo}W (30% de margem)`
     };
 }
 

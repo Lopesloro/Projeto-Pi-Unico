@@ -2,57 +2,6 @@
 // MAIN.JS - Lógica principal do Builder
 // ============================================
 
-// Mapeamento de categorias -> rótulo exibido + campo no estoque
-const CATEGORIAS_HTML = [
-    { key: 'cpu',     label: 'Processador',      campo: 'processadores' },
-    { key: 'mobo',    label: 'Placa-Mãe',        campo: 'placas_mae'    },
-    { key: 'ram',     label: 'Memória RAM',      campo: 'memorias'      },
-    { key: 'gpu',     label: 'Placa de Vídeo',   campo: 'placas_video'  },
-    { key: 'storage', label: 'Armazenamento',    campo: 'armazenamento' },
-    { key: 'fonte',   label: 'Fonte',            campo: 'fontes'        }
-];
-
-// Reconstrói o HTML de recomendação a partir dos IDs finais (pós-enforcer).
-// Inclui specs reais de cada peça e preserva o resumo original da IA.
-function construirHTMLRecomendacao(ids, estoque, htmlOriginal) {
-    const partes = [];
-    partes.push('<p><em>⚙️ Algumas peças foram trocadas automaticamente para respeitar seu orçamento. Os componentes abaixo são os selecionados na versão final.</em></p>');
-
-    // Descrições técnicas por categoria para enriquecer o HTML gerado
-    const descricoes = {
-        cpu:     (p) => `${p.socket ? `Socket ${p.socket}` : ''}${p.tdp_w ? `, ${p.tdp_w}W TDP` : ''}${p.video_integrado ? ', com vídeo integrado' : ''}${p.score ? ` — score de desempenho: ${p.score}/10` : ''}`,
-        mobo:    (p) => `${p.socket ? `Socket ${p.socket}` : ''}${p.tipo_memoria ? `, suporta ${p.tipo_memoria}` : ''}`,
-        ram:     (p) => `${p.capacidade_gb ? `${p.capacidade_gb}GB` : ''}${p.tipo ? ` ${p.tipo}` : ''} — capacidade adequada para o uso pretendido`,
-        gpu:     (p) => `${p.tdp_w ? `${p.tdp_w}W TDP` : ''}${p.score ? ` — score de desempenho: ${p.score}/10` : ''}`,
-        storage: (p) => p.nome.toLowerCase().includes('nvme') ? 'SSD NVMe de alta velocidade — leitura/escrita rápida' : p.nome.toLowerCase().includes('ssd') ? 'SSD SATA — boa velocidade e confiabilidade' : 'HD mecânico — alta capacidade de armazenamento',
-        fonte:   (p) => `${p.potencia_w ? `${p.potencia_w}W` : ''}${p.nome.toLowerCase().includes('gold') ? ', certificação 80 Plus Gold' : p.nome.toLowerCase().includes('bronze') ? ', certificação 80 Plus Bronze' : ''} — potência adequada com margem de segurança`,
-    };
-
-    for (const cat of CATEGORIAS_HTML) {
-        const id = ids[cat.key];
-        if (!id || id === 'null') {
-            if (cat.key === 'gpu') {
-                partes.push('<h3>Placa de Vídeo</h3><p>Não incluída — o processador selecionado possui vídeo integrado, suficiente para o objetivo informado dentro do orçamento disponível.</p>');
-            }
-            continue;
-        }
-        const peca = (estoque[cat.campo] || []).find(p => p.id === id);
-        if (!peca) continue;
-
-        const specs = descricoes[cat.key] ? descricoes[cat.key](peca) : '';
-        partes.push(`<h3>${cat.label}</h3><p><strong>${peca.nome}</strong>${specs ? ` — ${specs}.` : '.'}</p>`);
-    }
-
-    // Preserva o resumo geral da IA (último parágrafo do HTML original)
-    const resumoMatch = (htmlOriginal || '').match(/<p[^>]*>([\s\S]*?)<\/p>(?![\s\S]*<p)/i);
-    const resumo = resumoMatch
-        ? `<p>${resumoMatch[1]}</p>`
-        : '<p>Configuração balanceada que entrega o melhor desempenho possível para o uso informado, dentro do orçamento definido.</p>';
-    partes.push(resumo);
-
-    return partes.join('\n');
-}
-
 document.addEventListener('DOMContentLoaded', () => {
 
     const step1          = document.getElementById('step-1');
@@ -116,10 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const loadingScreen = document.getElementById('loading-screen');
         const loadingText   = document.getElementById('loading-text');
         loadingScreen.classList.remove('hidden');
-        // A animação de steps (ls-1…ls-4) é controlada pelo builder.html via MutationObserver.
-        // Aqui apenas mantemos o texto inicial; o estado final é atualizado após a resposta.
         loadingText.innerText = '🔍 Analisando seu objetivo...';
-        const intervalo = null; // sem setInterval redundante
 
         try {
             const respostaEstoque = await fetch('../data/components.json');
@@ -131,17 +77,42 @@ document.addEventListener('DOMContentLoaded', () => {
             // Separa IDs dos componentes, HTML de recomendação e raciocínio da IA
             const { ids, html, raciocinio } = parseRespostaIA(respostaIA);
 
-            // ──────────────────────────────────────────────
-            // ENFORCER DE ORÇAMENTO (REGRA OBRIGATÓRIA)
-            // O total da build NUNCA pode passar do valor do cliente.
-            // ──────────────────────────────────────────────
-            const enforce = aplicarLimiteOrcamento(ids, estoque, Number(orcamento));
+            // ── Fix 2: Verifica o total real ANTES do enforcer ──────────────
+            // A IA pode mentir no campo "total" — calculamos pelos preços reais.
+            const CAMPOS = {
+                cpu: 'processadores', mobo: 'placas_mae', ram: 'memorias',
+                gpu: 'placas_video', storage: 'armazenamento', fonte: 'fontes'
+            };
+            const totalReal = Object.entries(ids).reduce((acc, [key, id]) => {
+                if (!id || id === 'null') return acc;
+                const item = (estoque[CAMPOS[key]] || []).find(p => p.id === id);
+                return acc + (item ? Number(item.preco) : 0);
+            }, 0);
+            const limiteNum = Number(orcamento);
+            if (totalReal > limiteNum * 1.05) {
+                console.warn(`[AI] Total real R$${totalReal.toFixed(2)} excede orçamento R$${limiteNum} — enforcer irá corrigir.`);
+            }
 
-            // Se o enforcer trocou peças, regenera o HTML para refletir as peças finais
-            // (evita divergência entre Recomendação da IA e Tabela de Preços).
-            const htmlFinal = enforce.ajustado
-                ? construirHTMLRecomendacao(enforce.ids, estoque, html)
-                : html;
+            // ── Enforcer: garante que a build caiba no orçamento e o maximize ──
+            const enforce = aplicarLimiteOrcamento(ids, estoque, limiteNum);
+
+            // ── Fix 1: HTML sempre da IA — sem reconstrução ─────────────────
+            // O enforcer corrige os IDs silenciosamente.
+            // A tabela de preços e a verificação de compatibilidade usam os IDs corrigidos.
+            // A recomendação exibe o HTML original da IA, com banner de aviso se necessário.
+            const bannerAjuste = enforce.ajustado
+                ? `<p style="
+                    background:rgba(234,179,8,0.08);
+                    border:1px solid rgba(234,179,8,0.25);
+                    border-left:3px solid #eab308;
+                    border-radius:8px;
+                    padding:0.65rem 0.9rem;
+                    font-size:0.82rem;
+                    color:#fde047;
+                    margin-bottom:1rem;
+                  ">⚠️ Algumas peças foram ajustadas para caber exatamente no seu orçamento. Confira a tabela de preços abaixo para ver a configuração final.</p>`
+                : '';
+            const htmlFinal = bannerAjuste + html;
 
             // Persiste tudo no sessionStorage para a página de resultado
             sessionStorage.setItem('pcBuilderResposta',    htmlFinal);
