@@ -12,30 +12,42 @@ const CATEGORIAS_HTML = [
     { key: 'fonte',   label: 'Fonte',            campo: 'fontes'        }
 ];
 
-// Reconstrói o HTML de recomendação a partir dos IDs finais (pós-enforcer),
-// preservando o resumo final original da IA quando possível.
+// Reconstrói o HTML de recomendação a partir dos IDs finais (pós-enforcer).
+// Inclui specs reais de cada peça e preserva o resumo original da IA.
 function construirHTMLRecomendacao(ids, estoque, htmlOriginal) {
     const partes = [];
-    partes.push('<p><em>⚙️ Esta build foi otimizada automaticamente para caber no seu orçamento.</em></p>');
+    partes.push('<p><em>⚙️ Algumas peças foram trocadas automaticamente para respeitar seu orçamento. Os componentes abaixo são os selecionados na versão final.</em></p>');
+
+    // Descrições técnicas por categoria para enriquecer o HTML gerado
+    const descricoes = {
+        cpu:     (p) => `${p.socket ? `Socket ${p.socket}` : ''}${p.tdp_w ? `, ${p.tdp_w}W TDP` : ''}${p.video_integrado ? ', com vídeo integrado' : ''}${p.score ? ` — score de desempenho: ${p.score}/10` : ''}`,
+        mobo:    (p) => `${p.socket ? `Socket ${p.socket}` : ''}${p.tipo_memoria ? `, suporta ${p.tipo_memoria}` : ''}`,
+        ram:     (p) => `${p.capacidade_gb ? `${p.capacidade_gb}GB` : ''}${p.tipo ? ` ${p.tipo}` : ''} — capacidade adequada para o uso pretendido`,
+        gpu:     (p) => `${p.tdp_w ? `${p.tdp_w}W TDP` : ''}${p.score ? ` — score de desempenho: ${p.score}/10` : ''}`,
+        storage: (p) => p.nome.toLowerCase().includes('nvme') ? 'SSD NVMe de alta velocidade — leitura/escrita rápida' : p.nome.toLowerCase().includes('ssd') ? 'SSD SATA — boa velocidade e confiabilidade' : 'HD mecânico — alta capacidade de armazenamento',
+        fonte:   (p) => `${p.potencia_w ? `${p.potencia_w}W` : ''}${p.nome.toLowerCase().includes('gold') ? ', certificação 80 Plus Gold' : p.nome.toLowerCase().includes('bronze') ? ', certificação 80 Plus Bronze' : ''} — potência adequada com margem de segurança`,
+    };
 
     for (const cat of CATEGORIAS_HTML) {
         const id = ids[cat.key];
         if (!id || id === 'null') {
             if (cat.key === 'gpu') {
-                partes.push('<h3>Placa de Vídeo</h3><p>Não incluída nesta configuração — o processador escolhido tem vídeo integrado, suficiente para o uso pretendido dentro do orçamento.</p>');
+                partes.push('<h3>Placa de Vídeo</h3><p>Não incluída — o processador selecionado possui vídeo integrado, suficiente para o objetivo informado dentro do orçamento disponível.</p>');
             }
             continue;
         }
         const peca = (estoque[cat.campo] || []).find(p => p.id === id);
         if (!peca) continue;
-        partes.push(`<h3>${cat.label}</h3><p><strong>${peca.nome}</strong> — escolha equilibrada para o objetivo do cliente, respeitando compatibilidade e orçamento.</p>`);
+
+        const specs = descricoes[cat.key] ? descricoes[cat.key](peca) : '';
+        partes.push(`<h3>${cat.label}</h3><p><strong>${peca.nome}</strong>${specs ? ` — ${specs}.` : '.'}</p>`);
     }
 
-    // Tenta extrair um parágrafo de resumo do HTML original da IA (último <p>)
+    // Preserva o resumo geral da IA (último parágrafo do HTML original)
     const resumoMatch = (htmlOriginal || '').match(/<p[^>]*>([\s\S]*?)<\/p>(?![\s\S]*<p)/i);
     const resumo = resumoMatch
         ? `<p>${resumoMatch[1]}</p>`
-        : '<p>Configuração balanceada que entrega o melhor desempenho possível para o uso informado, sem ultrapassar o orçamento.</p>';
+        : '<p>Configuração balanceada que entrega o melhor desempenho possível para o uso informado, dentro do orçamento definido.</p>';
     partes.push(resumo);
 
     return partes.join('\n');
@@ -104,20 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const loadingScreen = document.getElementById('loading-screen');
         const loadingText   = document.getElementById('loading-text');
         loadingScreen.classList.remove('hidden');
-
-        const mensagens = [
-            '🔍 Analisando seu objetivo...',
-            '📦 Verificando melhores peças...',
-            '🔧 Garantindo a compatibilidade...',
-            '📊 Calculando possíveis gargalos...',
-            '✨ Finalizando a sua montagem...'
-        ];
-        let idx = 0;
-        loadingText.innerText = mensagens[0];
-        const intervalo = setInterval(() => {
-            idx++;
-            if (idx < mensagens.length) loadingText.innerText = mensagens[idx];
-        }, 2500);
+        // A animação de steps (ls-1…ls-4) é controlada pelo builder.html via MutationObserver.
+        // Aqui apenas mantemos o texto inicial; o estado final é atualizado após a resposta.
+        loadingText.innerText = '🔍 Analisando seu objetivo...';
+        const intervalo = null; // sem setInterval redundante
 
         try {
             const respostaEstoque = await fetch('../data/components.json');
@@ -150,18 +152,18 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('pcBuilderEnforceMsg', enforce.mensagem || '');
             sessionStorage.setItem('pcBuilderTotal',      String(enforce.total || 0));
 
-            clearInterval(intervalo);
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
             loadingText.style.color = '#10b981';
-            document.querySelector('.spinner').style.borderTopColor = '#10b981';
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.borderTopColor = '#10b981';
 
             setTimeout(() => { window.location.href = 'resultado.html'; }, 1200);
 
         } catch (erro) {
-            clearInterval(intervalo);
             loadingText.innerText = '❌ Erro ao processar. Verifique o console (F12).';
             loadingText.style.color = '#ef4444';
-            document.querySelector('.spinner').style.borderTopColor = '#ef4444';
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.borderTopColor = '#ef4444';
             console.error('Erro no Builder:', erro);
         }
     });

@@ -42,27 +42,50 @@ function calcularBottleneck(cpu, gpu) {
 
     const cpuScore = cpu.score;
     const gpuScore = gpu.score;
-    const diff = gpuScore - cpuScore;
-    const percentual = Math.max(0, Math.round((diff / gpuScore) * 100));
+    const diff     = gpuScore - cpuScore; // positivo = GPU mais forte (CPU é o gargalo)
+                                           // negativo = CPU mais forte (GPU é o gargalo)
+
+    // Gargalo na CPU (GPU > CPU): mais comum em setups gamer
+    const bottleneckCPU = diff > 0
+        ? Math.round((diff / gpuScore) * 100)
+        : 0;
+
+    // Gargalo na GPU (CPU > GPU): CPU ociosa, GPU é o ponto fraco
+    const bottleneckGPU = diff < 0
+        ? Math.round((-diff / cpuScore) * 100)
+        : 0;
+
+    const percentual = Math.max(bottleneckCPU, bottleneckGPU);
+    const gargaloCPU = bottleneckCPU >= bottleneckGPU;
 
     let nivel, cor, titulo, descricao;
 
     if (percentual >= 30) {
         nivel = 'critico'; cor = '#ef4444';
-        titulo = 'Gargalo Severo no Processador';
-        descricao = `O processador (score ${cpuScore}) está limitando significativamente a GPU (score ${gpuScore}). Ela opera bem abaixo do potencial. Considere um CPU mais potente.`;
+        if (gargaloCPU) {
+            titulo    = 'Gargalo Severo no Processador';
+            descricao = `O processador (score ${cpuScore}) está limitando significativamente a GPU (score ${gpuScore}). A placa de vídeo opera bem abaixo do potencial. Considere trocar por uma CPU mais potente.`;
+        } else {
+            titulo    = 'Gargalo Severo na Placa de Vídeo';
+            descricao = `A GPU (score ${gpuScore}) está muito abaixo do processador (score ${cpuScore}). Você não aproveitará todo o poder da CPU em jogos e aplicativos gráficos. Considere uma GPU mais potente.`;
+        }
     } else if (percentual >= 20) {
         nivel = 'alto'; cor = '#f97316';
-        titulo = 'Gargalo Moderado no Processador';
-        descricao = `Desequilíbrio notável: CPU score ${cpuScore} vs GPU score ${gpuScore}. Em jogos mais pesados você pode sentir travamentos causados pelo processador.`;
+        if (gargaloCPU) {
+            titulo    = 'Gargalo Moderado no Processador';
+            descricao = `Desequilíbrio notável: CPU score ${cpuScore} vs GPU score ${gpuScore}. Em títulos pesados você pode sentir queda de FPS causada pelo processador.`;
+        } else {
+            titulo    = 'Gargalo Moderado na Placa de Vídeo';
+            descricao = `CPU score ${cpuScore} está acima da GPU score ${gpuScore}. Parte do desempenho do processador ficará ocioso em cargas gráficas.`;
+        }
     } else if (percentual >= 10) {
         nivel = 'leve'; cor = '#eab308';
-        titulo = 'Gargalo Leve (Aceitável)';
-        descricao = `Pequeno desequilíbrio entre CPU (score ${cpuScore}) e GPU (score ${gpuScore}). Para a maioria dos jogos e aplicativos o impacto será mínimo.`;
+        titulo    = 'Gargalo Leve (Aceitável)';
+        descricao = `Pequeno desequilíbrio entre CPU (score ${cpuScore}) e GPU (score ${gpuScore}). Para a maioria dos jogos e aplicativos o impacto é mínimo e dentro do esperado.`;
     } else {
         nivel = 'ok'; cor = '#10b981';
-        titulo = 'Combinação Equilibrada';
-        descricao = `Ótima dupla! CPU (score ${cpuScore}) e GPU (score ${gpuScore}) estão bem balanceadas. Você aproveita o máximo de ambas as peças.`;
+        titulo    = 'Combinação Equilibrada ✓';
+        descricao = `Ótima dupla! CPU (score ${cpuScore}) e GPU (score ${gpuScore}) estão bem balanceadas. Você aproveita o máximo de ambas as peças sem desperdício.`;
     }
 
     return { nivel, cor, titulo, descricao, percentual, cpuScore, gpuScore };

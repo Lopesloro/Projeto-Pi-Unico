@@ -306,6 +306,64 @@ if (orcamento) {
 }
 
 // =============================================
+// PAINEL DE ORÇAMENTO (Budget Panel)
+// Lê os dados salvos pelo main.js e exibe ao usuário
+// =============================================
+function renderizarBudgetPanel() {
+    const total    = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
+    const orcNum   = parseFloat(orcamento || '0');
+    const ajustado = sessionStorage.getItem('pcBuilderAjustado') === '1';
+    const msg      = sessionStorage.getItem('pcBuilderEnforceMsg') || '';
+
+    if (!orcNum || !total) return;
+
+    const economia   = Math.max(0, orcNum - total);
+    const pct        = Math.min((total / orcNum) * 100, 100);
+    const overBudget = total > orcNum;
+
+    let panelClass = 'budget-panel';
+    let icon       = '✅';
+    let titulo     = 'Build dentro do orçamento';
+    if (overBudget)  { panelClass += ' over';     icon = '⚠️'; titulo = 'Atenção: orçamento excedido'; }
+    else if (ajustado) { panelClass += ' adjusted'; icon = '🔄'; titulo = 'Build ajustada automaticamente para caber no orçamento'; }
+
+    let barClass = 'budget-bar-fill';
+    if (pct >= 100)    barClass += ' over';
+    else if (pct >= 90) barClass += ' warn';
+
+    const panel = document.createElement('div');
+    panel.className = panelClass;
+    panel.id = 'budget-panel';
+    panel.style.cssText = 'width:100%;max-width:880px;margin:0 auto 1.5rem;position:relative;z-index:1;';
+    panel.innerHTML = `
+        <div class="budget-panel-header">${icon} ${titulo}</div>
+        <div class="budget-grid">
+            <div class="budget-cell">
+                <span class="budget-cell-label">Orçamento</span>
+                <span class="budget-cell-value">${fmt(orcNum)}</span>
+            </div>
+            <div class="budget-cell">
+                <span class="budget-cell-label">Total gasto</span>
+                <span class="budget-cell-value ${overBudget ? 'over' : 'ok'}">${fmt(total)}</span>
+            </div>
+            <div class="budget-cell">
+                <span class="budget-cell-label">Economia</span>
+                <span class="budget-cell-value ok">${fmt(economia)}</span>
+            </div>
+        </div>
+        <div class="budget-bar-bg">
+            <div class="${barClass}" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+        <p class="budget-msg">${msg || `${pct.toFixed(0)}% do orçamento utilizado`}</p>
+    `;
+
+    // Insere antes da tag <main>
+    const main = document.querySelector('main.resultado-main');
+    if (main) main.parentNode.insertBefore(panel, main);
+}
+renderizarBudgetPanel();
+
+// =============================================
 // SEÇÃO 1: RECOMENDAÇÃO DA IA
 // =============================================
 const conteudoIa = document.getElementById('conteudo-ia');

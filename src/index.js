@@ -4,20 +4,38 @@ const { enviarEmailBuild } = require('./modules/email');
 const logger = require('./utils/logger');
 
 // Componentes-alvo que o scraper deve buscar em todas as lojas.
-// Baseado nos itens mais relevantes do catálogo components.json.
+// Termos específicos aumentam a chance de match correto com o catálogo.
 const COMPONENTES_ALVO = [
-  'Processador Intel Core i5',
-  'Processador AMD Ryzen 5',
-  'Placa de Video RTX 4060',
-  'Placa de Video RX 7600',
-  'Memoria RAM DDR4 16GB',
-  'Memoria RAM DDR5 16GB',
-  'SSD NVMe 1TB',
-  'Placa Mae LGA1700 DDR4',
-  'Placa Mae AM5 DDR5',
-  'Fonte 650W 80 Plus Bronze',
-  'Gabinete Gamer ATX',
-  'Cooler CPU 120mm',
+  // Processadores Intel
+  'Intel Core i5-12400F',
+  'Intel Core i5-13400F',
+  'Intel Core i7-12700K',
+  // Processadores AMD
+  'AMD Ryzen 5 5600',
+  'AMD Ryzen 5 5600G',
+  'AMD Ryzen 7 5700X',
+  // GPUs NVIDIA
+  'NVIDIA GeForce RTX 4060',
+  'NVIDIA GeForce RTX 3060',
+  'NVIDIA GeForce RTX 3070',
+  // GPUs AMD
+  'AMD Radeon RX 7600',
+  'AMD Radeon RX 6600 XT',
+  // Memórias
+  'Memoria Kingston Fury 16GB DDR4 3200MHz',
+  'Memoria Corsair Vengeance 32GB DDR4',
+  // Armazenamento
+  'SSD Kingston NV2 1TB NVMe',
+  'SSD Crucial P3 500GB NVMe',
+  // Placas-mãe
+  'Placa Mae ASUS Prime B660M LGA1700 DDR4',
+  'Placa Mae Gigabyte B550M AM4 DDR4',
+  // Fontes
+  'Fonte Corsair CV650 650W Bronze',
+  'Fonte Corsair CX750 750W Bronze',
+  // Gabinete e Cooler
+  'Gabinete Gamer ATX Mid Tower',
+  'Cooler CPU 120mm AMD Intel',
 ];
 
 /**
