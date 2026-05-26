@@ -1,8 +1,7 @@
 // ============================================
 // BUDGET-ENFORCER.JS
-// Garante que NENHUMA build entregue ultrapasse o orçamento do cliente.
-// Roda no front após a IA responder; também serve de defesa final
-// na tela de resultado.
+// Garante que NENHUMA build entregue ultrapasse o orçamento.
+// Também MAXIMIZA o uso do orçamento — sobe peças quando sobra dinheiro.
 // ============================================
 
 const CATEGORIAS_ENFORCER = [
@@ -14,8 +13,13 @@ const CATEGORIAS_ENFORCER = [
     { key: 'gpu',     campo: 'placas_video',   obrigatorio: false }
 ];
 
-// Ordem de downgrade quando estoura o orçamento — GPU primeiro (maior impacto)
+// Ordem de downgrade quando estoura — GPU primeiro
 const ORDEM_DOWNGRADE = ['gpu', 'cpu', 'storage', 'ram', 'fonte', 'mobo'];
+
+// Ordem de upgrade quando sobra — GPU primeiro (maior impacto)
+const ORDEM_UPGRADE = ['gpu', 'cpu', 'ram', 'storage', 'fonte', 'mobo'];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function _resolverPeca(estoque, key, id) {
     if (!id || id === 'null') return null;
@@ -46,13 +50,13 @@ function _compatBuild(ids, estoque) {
     if (!gpu && !cpu.video_integrado) return false;
 
     const tdp = (cpu.tdp_w || 0) + (gpu?.tdp_w || 0);
-    const minimo = Math.ceil(tdp * 1.2);
-    if (fonte.potencia_w < minimo) return false;
+    if (fonte.potencia_w < Math.ceil(tdp * 1.3)) return false;
 
     return true;
 }
 
-// Tenta trocar UM componente por outro mais barato, mantendo compatibilidade.
+// ─── Downgrade ──────────────────────────────────────────────────────────────
+
 function _downgradeComponente(ids, estoque, key) {
     const cat = CATEGORIAS_ENFORCER.find(c => c.key === key);
     if (!cat) return false;
@@ -60,7 +64,6 @@ function _downgradeComponente(ids, estoque, key) {
     const atual = _resolverPeca(estoque, key, ids[key]);
     const precoAtual = atual ? (Number(atual.preco) || 0) : Infinity;
 
-    // Para GPU não-obrigatória, considera a opção "remover" como mais barata
     const candidatos = [...(estoque[cat.campo] || [])]
         .filter(p => (Number(p.preco) || 0) < precoAtual)
         .sort((a, b) => (b.preco || 0) - (a.preco || 0));
@@ -73,7 +76,7 @@ function _downgradeComponente(ids, estoque, key) {
         }
     }
 
-    // GPU pode ser removida se a CPU tem vídeo integrado
+    // GPU pode ser removida se CPU tem vídeo integrado
     if (key === 'gpu' && atual) {
         const idsTeste = { ...ids, gpu: null };
         if (_compatBuild(idsTeste, estoque)) {
@@ -85,7 +88,92 @@ function _downgradeComponente(ids, estoque, key) {
     return false;
 }
 
-// Constrói um fallback mínimo viável dentro do orçamento (last resort)
+// ─── Upgrade (NOVO) ─────────────────────────────────────────────────────────
+
+/**
+ * Tenta trocar UM componente por outro MELHOR que ainda caiba no orçamento.
+ * Prioriza a maior melhoria possível dentro do surplus disponível.
+ */
+function _upgradeComponente(ids, estoque, key, limite) {
+    const cat = CATEGORIAS_ENFORCER.find(c => c.key === key);
+    if (!cat) return false;
+
+    const total   = _calcularTotal(ids, estoque);
+    const surplus = limite - total;
+    if (surplus < 50) return false; // margem mínima para tentar upgrade
+
+    const atual     = _resolverPeca(estoque, key, ids[key]);
+    const precoAtual = atual ? (Number(atual.preco) || 0) : 0;
+
+    // Candidatos: mais caros que o atual, dentro do surplus disponível
+    // Ordenados do mais caro ao mais barato → pega o MELHOR que cabe
+    const candidatos = [...(estoque[cat.campo] || [])]
+        .filter(p => {
+            const preco = Number(p.preco) || 0;
+            return preco > precoAtual && (preco - precoAtual) <= surplus;
+        })
+        .sort((a, b) => (b.preco || 0) - (a.preco || 0));
+
+    for (const cand of candidatos) {
+        const idsTeste  = { ...ids, [key]: cand.id };
+        const novoTotal = _calcularTotal(idsTeste, estoque);
+        if (novoTotal <= limite && _compatBuild(idsTeste, estoque)) {
+            ids[key] = cand.id;
+            return true;
+        }
+    }
+
+    // Se não há GPU e a CPU tem vídeo integrado, tenta adicionar uma GPU com o surplus
+    if (key === 'gpu' && !ids.gpu) {
+        const gpus = [...(estoque.placas_video || [])]
+            .filter(g => (Number(g.preco) || 0) <= surplus)
+            .sort((a, b) => (b.preco || 0) - (a.preco || 0));
+
+        for (const g of gpus) {
+            const idsTeste  = { ...ids, gpu: g.id };
+            const novoTotal = _calcularTotal(idsTeste, estoque);
+            if (novoTotal <= limite && _compatBuild(idsTeste, estoque)) {
+                ids.gpu = g.id;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Maximiza o uso do orçamento fazendo upgrades iterativos.
+ * Para quando surplus < 5% do orçamento ou não houver mais upgrades possíveis.
+ */
+function _maximizarOrcamento(ids, estoque, limite) {
+    const MARGEM_OK = 0.05; // 5% de surplus é aceitável
+    let melhorou    = true;
+    let iteracoes   = 0;
+    const MAX_ITER  = 25;
+
+    while (melhorou && iteracoes < MAX_ITER) {
+        melhorou  = false;
+        iteracoes++;
+
+        const total   = _calcularTotal(ids, estoque);
+        const surplus = limite - total;
+
+        if (surplus / limite <= MARGEM_OK) break; // ≥ 95% usado — está ótimo
+
+        for (const key of ORDEM_UPGRADE) {
+            if (_upgradeComponente(ids, estoque, key, limite)) {
+                melhorou = true;
+                break; // reinicia loop com novo estado
+            }
+        }
+    }
+
+    return ids;
+}
+
+// ─── Fallback mínimo viável ──────────────────────────────────────────────────
+
 function _buildMinimoViavel(estoque, orcamento) {
     const cpus = [...(estoque.processadores || [])]
         .filter(c => c.video_integrado)
@@ -107,26 +195,27 @@ function _buildMinimoViavel(estoque, orcamento) {
                 .sort((a, b) => a.preco - b.preco)[0];
             if (!storage) continue;
 
-            const tdpMin = Math.ceil((cpu.tdp_w || 65) * 1.2);
-            const fonte = [...(estoque.fontes || [])]
+            const tdpMin = Math.ceil((cpu.tdp_w || 65) * 1.3);
+            const fonte  = [...(estoque.fontes || [])]
                 .filter(f => f.potencia_w >= tdpMin)
                 .sort((a, b) => a.preco - b.preco)[0];
             if (!fonte) continue;
 
             const total = cpu.preco + mobo.preco + ram.preco + storage.preco + fonte.preco;
             if (total <= orcamento) {
-                return {
-                    cpu: cpu.id, mobo: mobo.id, ram: ram.id,
-                    storage: storage.id, fonte: fonte.id, gpu: null
-                };
+                return { cpu: cpu.id, mobo: mobo.id, ram: ram.id,
+                         storage: storage.id, fonte: fonte.id, gpu: null };
             }
         }
     }
     return null;
 }
 
+// ─── Função principal ────────────────────────────────────────────────────────
+
 /**
- * Garante que a build NÃO ultrapasse o orçamento informado pelo cliente.
+ * 1. Garante que a build NÃO ultrapasse o orçamento (downgrade se necessário)
+ * 2. Maximiza o uso do orçamento (upgrade peças com o surplus disponível)
  * Retorna { ids, total, ajustado, dentroOrcamento, mensagem }.
  */
 function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
@@ -135,53 +224,69 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         return {
             ids: { ...idsOriginais },
             total: _calcularTotal(idsOriginais, estoque),
-            ajustado: false,
-            dentroOrcamento: true,
+            ajustado: false, dentroOrcamento: true,
             mensagem: 'Orçamento não informado — sem limite aplicado.'
         };
     }
 
-    let ids = { ...idsOriginais };
+    let ids   = { ...idsOriginais };
     let total = _calcularTotal(ids, estoque);
 
-    if (total <= limite) {
-        return { ids, total, ajustado: false, dentroOrcamento: true,
-                 mensagem: `Build dentro do orçamento (R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)}).` };
-    }
+    // ── FASE 1: Downgrade se estourou ────────────────────────────────────────
+    if (total > limite) {
+        let ajustado   = false;
+        const MAX_DOWN = 30;
+        let tentativa  = 0;
 
-    let ajustado = false;
-    const MAX_TENTATIVAS = 30;
-    let tentativa = 0;
-
-    while (total > limite && tentativa < MAX_TENTATIVAS) {
-        tentativa++;
-        let trocou = false;
-        for (const key of ORDEM_DOWNGRADE) {
-            if (_downgradeComponente(ids, estoque, key)) {
-                trocou = true;
-                ajustado = true;
-                total = _calcularTotal(ids, estoque);
-                if (total <= limite) break;
+        while (total > limite && tentativa < MAX_DOWN) {
+            tentativa++;
+            let trocou = false;
+            for (const key of ORDEM_DOWNGRADE) {
+                if (_downgradeComponente(ids, estoque, key)) {
+                    trocou  = true;
+                    ajustado = true;
+                    total   = _calcularTotal(ids, estoque);
+                    if (total <= limite) break;
+                }
             }
+            if (!trocou) break;
         }
-        if (!trocou) break;
+
+        if (total > limite) {
+            const fallback = _buildMinimoViavel(estoque, limite);
+            if (fallback) {
+                ids   = fallback;
+                total = _calcularTotal(ids, estoque);
+                // Mesmo fallback passa pelo upgrade
+                ids   = _maximizarOrcamento(ids, estoque, limite);
+                total = _calcularTotal(ids, estoque);
+                return {
+                    ids, total, ajustado: true, dentroOrcamento: true,
+                    mensagem: `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)}.`
+                };
+            }
+            return {
+                ids, total, ajustado: true, dentroOrcamento: false,
+                mensagem: `Não foi possível montar uma build dentro de R$ ${limite.toFixed(2)}. Aumente o orçamento.`
+            };
+        }
     }
 
-    if (total <= limite) {
-        return { ids, total, ajustado: true, dentroOrcamento: true,
-                 mensagem: `Build ajustada para caber no orçamento (R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)}).` };
-    }
+    // ── FASE 2: Upgrade — maximiza uso do orçamento ──────────────────────────
+    const totalAntes = _calcularTotal(ids, estoque);
+    ids   = _maximizarOrcamento(ids, estoque, limite);
+    total = _calcularTotal(ids, estoque);
 
-    // Última cartada: build mínima viável
-    const fallback = _buildMinimoViavel(estoque, limite);
-    if (fallback) {
-        const totalFb = _calcularTotal(fallback, estoque);
-        return { ids: fallback, total: totalFb, ajustado: true, dentroOrcamento: true,
-                 mensagem: `Configuração da IA não cabia no orçamento — entregue build mínima viável (R$ ${totalFb.toFixed(2)}).` };
-    }
+    const foiUpgradado = total > totalAntes;
+    const foiAjustado  = total !== Number(_calcularTotal(idsOriginais, estoque));
+    const pct = ((total / limite) * 100).toFixed(1);
 
-    return { ids, total, ajustado: true, dentroOrcamento: false,
-             mensagem: `Não foi possível montar uma build dentro de R$ ${limite.toFixed(2)}. Aumente o orçamento.` };
+    return {
+        ids, total,
+        ajustado: foiAjustado || foiUpgradado,
+        dentroOrcamento: true,
+        mensagem: `Build otimizada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} utilizados (${pct}% do orçamento).`
+    };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

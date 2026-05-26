@@ -508,10 +508,34 @@ function carregarTabelaPrecos(estoque) {
     let totalBR = 0, totalAli = 0, linhas = '', algum = false;
 
     categorias.forEach(cat => {
-        const id   = ids[cat.key];
-        if (!id || id === 'null') return;
+        const id = ids[cat.key];
+        // GPU is optional — skip silently only when null
+        if (!id || id === 'null') {
+            if (cat.key === 'gpu') return;
+            // Obrigatório mas ausente — linha de aviso
+            linhas += `
+            <tr class="row-nao-encontrado">
+                <td><span class="cat-label">${cat.label}</span></td>
+                <td class="td-nome" colspan="4" style="color:#94a3b8;font-style:italic;">Componente não selecionado</td>
+            </tr>`;
+            return;
+        }
+
         const item = cat.arr?.find(c => c.id === id);
-        if (!item) return;
+
+        // Componente com ID mas não localizado no catálogo — exibe ID como fallback
+        if (!item) {
+            algum = true;
+            linhas += `
+            <tr class="row-nao-encontrado">
+                <td><span class="cat-label">${cat.label}</span></td>
+                <td class="td-nome" style="color:#f59e0b;">${id} <small style="color:#64748b;">(dados detalhados indisponíveis)</small></td>
+                <td class="col-br">—</td>
+                <td class="col-ali">—</td>
+                <td class="col-eco">—</td>
+            </tr>`;
+            return;
+        }
 
         algum = true;
         const precoBR  = item.preco     || 0;
@@ -541,20 +565,27 @@ function carregarTabelaPrecos(estoque) {
     if (!algum) return;
 
     tbody.innerHTML = linhas;
+    // Usa o total do enforcer se disponível (mais preciso — inclui peças não encontradas no catálogo local)
+    const totalEnforcerFinal = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
+    const totalExibido = (totalEnforcerFinal > 0 && totalEnforcerFinal >= totalBR) ? totalEnforcerFinal : totalBR;
+
     tfoot.innerHTML = `
         <tr class="tfoot-total">
             <td colspan="2"><strong>TOTAL</strong></td>
-            <td class="col-br"><strong>${fmt(totalBR)}</strong></td>
+            <td class="col-br"><strong>${fmt(totalExibido)}</strong></td>
             <td class="col-ali"><strong>${fmt(totalAli)}</strong></td>
-            <td class="col-eco"><strong>-${fmt(totalBR - totalAli)}</strong></td>
+            <td class="col-eco"><strong>-${fmt(totalExibido - totalAli)}</strong></td>
         </tr>`;
     secao.style.display = 'block';
 
     // Exibe o total real abaixo da Recomendação da IA
+    // IMPORTANTE: usa o total do enforcer (sessionStorage) — sempre correto.
+    // NÃO usa totalBR da tabela, que pode ser incompleto se algum ID não for encontrado.
     const totalIaCard  = document.getElementById('total-ia-card');
     const totalIaValor = document.getElementById('total-ia-valor');
     if (totalIaCard && totalIaValor) {
-        totalIaValor.textContent = fmt(totalBR);
+        const totalEnforcer = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
+        totalIaValor.textContent = fmt(totalEnforcer || totalBR);
         totalIaCard.style.display = 'block';
     }
 
@@ -575,7 +606,16 @@ function carregarTabelaPrecos(estoque) {
         const id = ids[cat.key];
         if (!id || id === 'null') return '';
         const item = cat.arr?.find(c => c.id === id);
-        if (!item) return '';
+        if (!item) {
+            // Fallback: mostra o ID mesmo sem dados do catálogo
+            return `
+    <tr style="border-bottom:1px solid #1e293b;">
+      <td style="padding:10px;color:#94a3b8;font-size:12px;font-weight:600;">${cat.label}</td>
+      <td style="padding:10px;color:#f59e0b;font-size:12px;">${id}</td>
+      <td style="padding:10px;color:#64748b;font-size:12px;">—</td>
+      <td style="padding:10px;color:#64748b;font-size:12px;">—</td>
+    </tr>`;
+        }
         const loja = item.loja_br || 'Kabum';
         const link = linkBR(loja, item.nome);
         const preco = item.preco || 0;
