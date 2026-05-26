@@ -117,7 +117,7 @@ REGRA 2 — MAXIMIZE O ORÇAMENTO (use 85-100% do teto):
 Distribua o orçamento seguindo estas proporções por tipo de uso:
 
 ▸ GAMES / JOGOS (prioridade: GPU)
-  GPU:     45-55% do orçamento → escolha maior score/R$ possível
+  GPU:     45-55% do orçamento → escolha MENOR Custo/Score possível (melhor valor)
   CPU:     18-22% → compatível com GPU, sem gargalo (score próximo da GPU)
   Placa-Mãe: 12-15%
   RAM:      8-10% → mínimo 16 GB DDR4
@@ -254,8 +254,9 @@ function parseRespostaIA(texto) {
                 fonte:   c.fonte   || null,
                 storage: c.storage || null,
             };
-            const html = (parsed.html || '').replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
-            return { ids, html };
+            const html      = (parsed.html      || '').replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
+            const raciocinio = parsed.raciocinio || '';
+            return { ids, html, raciocinio };
         }
     } catch (_) {
         // Não é JSON válido — tentar formato legado

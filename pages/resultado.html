@@ -366,7 +366,8 @@ renderizarBudgetPanel();
 // =============================================
 // SEÇÃO 1: RECOMENDAÇÃO DA IA
 // =============================================
-const conteudoIa = document.getElementById('conteudo-ia');
+const conteudoIa  = document.getElementById('conteudo-ia');
+const raciocinio  = sessionStorage.getItem('pcBuilderRaciocinio') || '';
 
 if (respostaHTML) {
     let html = respostaHTML
@@ -374,6 +375,24 @@ if (respostaHTML) {
         .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
         .replace(/## (.*?)(\n|$)/g,  '<h3>$1</h3>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+    // Exibe o raciocínio da IA antes da recomendação (impressiona na banca)
+    if (raciocinio) {
+        html = `<div style="
+            background: rgba(99,102,241,0.07);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-left: 3px solid #6366f1;
+            border-radius: 10px;
+            padding: 0.9rem 1.1rem;
+            margin-bottom: 1.25rem;
+        ">
+            <p style="margin:0 0 0.3rem;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.5px;color:#818cf8;font-weight:600;">
+                🧠 Raciocínio da IA
+            </p>
+            <p style="margin:0;color:#cbd5e1;font-size:0.875rem;line-height:1.6;">${raciocinio}</p>
+        </div>` + html;
+    }
+
     conteudoIa.innerHTML = html;
 } else {
     conteudoIa.innerHTML = `

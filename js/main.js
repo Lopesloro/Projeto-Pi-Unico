@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const respostaIA = await consultarIA(orcamento, textoObjetivo, estoque);
 
-            // Separa IDs dos componentes do HTML da recomendação
-            const { ids, html } = parseRespostaIA(respostaIA);
+            // Separa IDs dos componentes, HTML de recomendação e raciocínio da IA
+            const { ids, html, raciocinio } = parseRespostaIA(respostaIA);
 
             // ──────────────────────────────────────────────
             // ENFORCER DE ORÇAMENTO (REGRA OBRIGATÓRIA)
@@ -144,13 +144,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 : html;
 
             // Persiste tudo no sessionStorage para a página de resultado
-            sessionStorage.setItem('pcBuilderResposta',   htmlFinal);
-            sessionStorage.setItem('pcBuilderIds',        JSON.stringify(enforce.ids));
-            sessionStorage.setItem('pcBuilderOrcamento',  orcamento);
-            sessionStorage.setItem('pcBuilderObjetivo',   textoObjetivo);
-            sessionStorage.setItem('pcBuilderAjustado',   enforce.ajustado ? '1' : '0');
-            sessionStorage.setItem('pcBuilderEnforceMsg', enforce.mensagem || '');
-            sessionStorage.setItem('pcBuilderTotal',      String(enforce.total || 0));
+            sessionStorage.setItem('pcBuilderResposta',    htmlFinal);
+            sessionStorage.setItem('pcBuilderIds',         JSON.stringify(enforce.ids));
+            sessionStorage.setItem('pcBuilderOrcamento',   orcamento);
+            sessionStorage.setItem('pcBuilderObjetivo',    textoObjetivo);
+            sessionStorage.setItem('pcBuilderAjustado',    enforce.ajustado ? '1' : '0');
+            sessionStorage.setItem('pcBuilderEnforceMsg',  enforce.mensagem || '');
+            sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
+            sessionStorage.setItem('pcBuilderRaciocinio',  raciocinio || '');
 
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
             loadingText.style.color = '#10b981';
