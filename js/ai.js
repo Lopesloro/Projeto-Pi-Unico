@@ -2,8 +2,69 @@
 // AI.JS - Comunicação com a API (via proxy backend /api/gemini → Mistral)
 // ============================================
 
+// ─── Detecta tipo de build ───────────────────────────────────────────────────
+function _detectarTipoBuild(objetivo) {
+    const obj = (objetivo || '').toLowerCase();
+    if (/game|jogo|fps|esport|1080p|1440p|4k/.test(obj)) return 'games';
+    if (/edi[cç][aã]o|video|render|premiere|davinci|after.effect/.test(obj)) return 'edicao';
+    return 'geral';
+}
+
+// ─── Alocação de orçamento por categoria ────────────────────────────────────
+function _calcularAlocacao(orcamento, tipoBuild) {
+    const b = Number(orcamento);
+    const pct = {
+        games:  { gpu: 0.50, cpu: 0.22, mobo: 0.13, ram: 0.10, storage: 0.07, fonte: 0.08 },
+        edicao: { gpu: 0.22, cpu: 0.30, mobo: 0.12, ram: 0.18, storage: 0.10, fonte: 0.08 },
+        geral:  { gpu: 0.00, cpu: 0.30, mobo: 0.15, ram: 0.12, storage: 0.10, fonte: 0.08 },
+    }[tipoBuild];
+
+    return {
+        gpu:     Math.round(b * pct.gpu),
+        cpu:     Math.round(b * pct.cpu),
+        mobo:    Math.round(b * pct.mobo),
+        ram:     Math.round(b * pct.ram),
+        storage: Math.round(b * pct.storage),
+        fonte:   Math.round(b * pct.fonte),
+    };
+}
+
 /**
- * Formata o catálogo completo com dados técnicos + custo-benefício calculado.
+ * Fix B — Filtra o catálogo para mostrar apenas peças acessíveis ao orçamento.
+ * Caps por categoria: GPU 58%, CPU 40%, Mobo 18%, RAM 14%, Storage 14%, PSU 14%.
+ * Fallback: se restar < 3 itens, exibe os 3 mais baratos da categoria.
+ */
+function _filtrarEstoquePorOrcamento(estoque, orcamento) {
+    const b = Number(orcamento);
+    const CAPS = {
+        processadores: 0.40,
+        placas_video:  0.58,
+        placas_mae:    0.18,
+        memorias:      0.14,
+        armazenamento: 0.14,
+        fontes:        0.14,
+    };
+
+    const filtrado = {};
+    for (const [campo, items] of Object.entries(estoque)) {
+        const cap = CAPS[campo];
+        if (!cap || !Array.isArray(items)) { filtrado[campo] = items; continue; }
+
+        const dentroLimite = items.filter(p => Number(p.preco) <= b * cap);
+
+        // Fallback: sempre exibe pelo menos 3 opções (as mais baratas)
+        if (dentroLimite.length >= 3) {
+            filtrado[campo] = dentroLimite;
+        } else {
+            const ordenados = [...items].sort((a, b) => Number(a.preco) - Number(b.preco));
+            filtrado[campo] = ordenados.slice(0, Math.max(3, dentroLimite.length));
+        }
+    }
+    return filtrado;
+}
+
+/**
+ * Formata o catálogo filtrado com dados técnicos + custo-benefício calculado.
  * CPUs e GPUs ordenadas pelo melhor custo-benefício (menor R$/score primeiro).
  */
 function _formatarCatalogo(estoque) {
@@ -81,15 +142,36 @@ function _formatarCatalogo(estoque) {
 }
 
 /**
- * Monta o prompt completo enviado à Mistral.
+ * Fix A — Monta o prompt completo enviado à Mistral.
+ * Inclui alocação numérica por categoria para evitar que a IA gaste demais em uma peça.
  */
 function _buildPrompt(orcamento, objetivo, estoque) {
-    const catalogo = _formatarCatalogo(estoque);
-    const orcNum   = Number(orcamento);
+    // Filtra catálogo por orçamento (Fix B) antes de formatar
+    const estoqueFiltrado = _filtrarEstoquePorOrcamento(estoque, orcamento);
+    const catalogo = _formatarCatalogo(estoqueFiltrado);
 
-    // Thresholds de uso do budget (usados nas regras abaixo)
+    const orcNum   = Number(orcamento);
     const minimo95  = (orcNum * 0.95).toFixed(2);
     const minimo85  = (orcNum * 0.85).toFixed(2);
+
+    // Fix A: calcula alocação numérica por categoria
+    const tipo  = _detectarTipoBuild(objetivo);
+    const aloc  = _calcularAlocacao(orcamento, tipo);
+    const tipoLabel = tipo === 'games' ? 'Games' : tipo === 'edicao' ? 'Edição/Render' : 'Uso Geral';
+
+    const tabelaAlocacao = `
+ALOCAÇÃO MÁXIMA POR PEÇA — ${tipoLabel} (baseada no seu orçamento de R$ ${orcamento})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${aloc.gpu  > 0 ? `  GPU:            máx R$ ${aloc.gpu.toFixed(2).padStart(8)}` : '  GPU:            não incluída (uso geral)'}
+  CPU:            máx R$ ${aloc.cpu.toFixed(2).padStart(8)}
+  Placa-Mãe:     máx R$ ${aloc.mobo.toFixed(2).padStart(8)}
+  RAM:            máx R$ ${aloc.ram.toFixed(2).padStart(8)}
+  Armazenamento:  máx R$ ${aloc.storage.toFixed(2).padStart(8)}
+  Fonte:          máx R$ ${aloc.fonte.toFixed(2).padStart(8)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  TETO POR PEÇA: Não exceda os valores acima individualmente.
+    Se escolher GPU mais cara, REDUZA a CPU proporcionalmente.
+    A SOMA FINAL deve ser ≤ R$ ${orcamento}. Sem exceções.`;
 
     return `Você é um especialista sênior em montagem de PCs para o mercado brasileiro.
 Sua missão: selecionar a MELHOR build possível, gastando o MÁXIMO do orçamento do cliente em desempenho.
@@ -100,8 +182,11 @@ DADOS DO CLIENTE
 💰 ORÇAMENTO (TETO ABSOLUTO): R$ ${orcamento}
 🎯 Objetivo: "${objetivo}"
 
+${tabelaAlocacao}
+
 ═══════════════════════════════════════════
 CATÁLOGO — USE APENAS ESTES IDs E PREÇOS
+(Pré-filtrado para componentes compatíveis com seu orçamento)
 ═══════════════════════════════════════════
 ${catalogo}
 
@@ -118,7 +203,7 @@ REGRA 2 — USE O MÁXIMO DO ORÇAMENTO (mínimo 92%):
 • Total DEVE ser ≥ R$ ${minimo95} (95% do orçamento).
 • Se não conseguir 95%, o MÍNIMO aceitável é R$ ${minimo85} (85%).
 • NÃO entregue build barata se houver componentes melhores disponíveis no catálogo.
-• Processo obrigatório: montou a build → sobrou dinheiro → sobe a peça mais impactante.
+• Processo: montou a build → sobrou dinheiro → sobe a peça mais impactante.
 • Repita até o surplus ser menor que R$ 200 ou não haver upgrade possível.
 
 REGRA 3 — REQUISITOS MÍNIMOS POR RESOLUÇÃO (GAMES):
@@ -141,10 +226,7 @@ REGRA 5 — EQUILÍBRIO CPU × GPU (sem bottleneck):
 REGRA 6 — ESCOLHA POR CUSTO-BENEFÍCIO:
 • Para CPU e GPU: prefira menor Custo/Score (R$/pt) dentro do budget alocado
 • Dois componentes com score parecido? Escolha o mais barato.
-• Distribuição do orçamento por objetivo:
-  → Games:          GPU 45-55% | CPU 18-22% | Mobo 10-14% | RAM 8-10% | Storage 5-7% | Fonte 6-8%
-  → Edição/Render:  CPU 28-33% | RAM 15-20% | GPU 20-25% | Mobo 10-14% | Storage 8-10% | Fonte 5-7%
-  → Uso geral:      CPU 28-33% | Mobo 13-16% | RAM 10-13% | Storage 8-10% | Fonte 6-8% | GPU 0%
+• Respeite os tetos por peça definidos na tabela de alocação acima.
 
 REGRA 7 — APENAS IDs DO CATÁLOGO:
 • Copie os IDs exatamente (ex: "cpu_i5_12400f", "gpu_rtx3080")
@@ -155,21 +237,22 @@ PROCESSO OBRIGATÓRIO (passo a passo)
 ═══════════════════════════════════════════
 1. Identifique o objetivo (games / edição / geral)
 2. Verifique se há menção a resolução (4K / 1440p / 1080p) → defina score mínimo da GPU
-3. Calcule o budget para GPU (45-55% se games, 20-25% se edição)
-4. Escolha GPU com menor Custo/Score dentro desse budget e com score mínimo exigido
-5. Escolha CPU com score próximo da GPU e socket adequado
-6. Escolha Placa-Mãe com mesmo socket da CPU
-7. Escolha RAM compatível com a Placa-Mãe
-8. Escolha Armazenamento (NVMe para games/edição)
-9. Escolha Fonte: (TDP_CPU + TDP_GPU) × 1.3 → menor fonte que atende
-10. Some os preços → se total < 92% do orçamento, FAÇA UPGRADE na GPU ou CPU
-11. Confirme: total ≤ R$ ${orcamento} E total ≥ R$ ${minimo85}
+3. Consulte a tabela de alocação acima → GPU máx R$ ${aloc.gpu}, CPU máx R$ ${aloc.cpu}
+4. Escolha GPU com menor Custo/Score dentro de R$ ${aloc.gpu} e com score mínimo exigido
+5. Escolha CPU com score próximo da GPU, socket adequado, dentro de R$ ${aloc.cpu}
+6. Escolha Placa-Mãe com mesmo socket da CPU, dentro de R$ ${aloc.mobo}
+7. Escolha RAM compatível com a Placa-Mãe, dentro de R$ ${aloc.ram}
+8. Escolha Armazenamento (NVMe para games/edição), dentro de R$ ${aloc.storage}
+9. Escolha Fonte: (TDP_CPU + TDP_GPU) × 1.3 → menor fonte que atende, dentro de R$ ${aloc.fonte}
+10. Some os preços MANUALMENTE usando os valores do catálogo → confirme ≤ R$ ${orcamento}
+11. Se total < 92% do orçamento (< R$ ${minimo85}), suba a GPU ou CPU — respeitando os tetos
+12. Confirme: total ≤ R$ ${orcamento} E total ≥ R$ ${minimo85}
 
 ═══════════════════════════════════════════
 FORMATO (JSON puro — sem markdown, sem texto fora)
 ═══════════════════════════════════════════
 {
-  "raciocinio": "Explique: objetivo identificado, GPU escolhida e por quê (score, Custo/Score), como chegou ao total, quanto do orçamento foi usado",
+  "raciocinio": "Explique: objetivo identificado, GPU escolhida e por quê (score, Custo/Score), soma dos preços passo a passo, quanto do orçamento foi usado",
   "componentes": {
     "cpu":     "ID_EXATO",
     "mobo":    "ID_EXATO",

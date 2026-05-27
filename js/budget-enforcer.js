@@ -112,7 +112,12 @@ function _upgradeComponente(ids, estoque, key, limite) {
     const candidatos = [...(estoque[cat.campo] || [])]
         .filter(p => {
             const preco = Number(p.preco) || 0;
-            return preco > precoAtual && (preco - precoAtual) <= surplus;
+            if (preco <= precoAtual || (preco - precoAtual) > surplus) return false;
+            // GPU/CPU: só promove se o score for ESTRITAMENTE maior — evita trocas laterais
+            if (usarScore && p.score != null && atual?.score != null) {
+                return p.score > atual.score;
+            }
+            return true;
         })
         .sort((a, b) => {
             if (usarScore && a.score != null && b.score != null) {
