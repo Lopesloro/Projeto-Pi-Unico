@@ -96,32 +96,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // ── Enforcer: garante que a build caiba no orçamento e o maximize ──
             const enforce = aplicarLimiteOrcamento(ids, estoque, limiteNum);
 
-            // ── Fix 1: HTML sempre da IA — sem reconstrução ─────────────────
-            // O enforcer corrige os IDs silenciosamente.
-            // A tabela de preços e a verificação de compatibilidade usam os IDs corrigidos.
-            // A recomendação exibe o HTML original da IA, com banner de aviso se necessário.
-            const bannerAjuste = enforce.ajustado
-                ? `<p style="
-                    background:rgba(234,179,8,0.08);
-                    border:1px solid rgba(234,179,8,0.25);
-                    border-left:3px solid #eab308;
-                    border-radius:8px;
-                    padding:0.65rem 0.9rem;
-                    font-size:0.82rem;
-                    color:#fde047;
-                    margin-bottom:1rem;
-                  ">⚠️ Algumas peças foram ajustadas para caber exatamente no seu orçamento. Confira a tabela de preços abaixo para ver a configuração final.</p>`
-                : '';
-            const htmlFinal = bannerAjuste + html;
+            // ── HTML sempre da IA — sem banner de ajuste ────────────────────
+            // Os IDs originais da IA são preservados para gargalo e tabela de preços.
+            // O painel de orçamento exibe o total do enforcer (build corrigida).
+            // Não há mais banner amarelo — o painel de orçamento já comunica o status.
 
             // Persiste tudo no sessionStorage para a página de resultado
-            sessionStorage.setItem('pcBuilderResposta',    htmlFinal);
-            sessionStorage.setItem('pcBuilderIds',         JSON.stringify(enforce.ids));
+            sessionStorage.setItem('pcBuilderResposta',    html);
+            // IDs originais da IA — usados pelo gargalo e comparativo de preços
+            sessionStorage.setItem('pcBuilderIds',         JSON.stringify(ids));
+            // Total real das peças DA IA (para o card "Total da Build" e tabela de preços)
+            sessionStorage.setItem('pcBuilderTotalIA',     String(totalReal));
+            // Total do enforcer (para o painel de orçamento — pode diferir se a IA extrapolou)
+            sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
             sessionStorage.setItem('pcBuilderOrcamento',   orcamento);
             sessionStorage.setItem('pcBuilderObjetivo',    textoObjetivo);
             sessionStorage.setItem('pcBuilderAjustado',    enforce.ajustado ? '1' : '0');
             sessionStorage.setItem('pcBuilderEnforceMsg',  enforce.mensagem || '');
-            sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
             sessionStorage.setItem('pcBuilderRaciocinio',  raciocinio || '');
 
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
