@@ -580,14 +580,13 @@ function carregarTabelaPrecos(estoque) {
         </tr>`;
     secao.style.display = 'block';
 
-    // Exibe o total das peças DA IA abaixo da Recomendação.
-    // Usa pcBuilderTotalIA (total real calculado pelos preços do catálogo antes do enforcer).
-    // Fallback: totalBR (soma da tabela de preços, que usa os mesmos IDs da IA).
+    // Exibe o total real da build final (enforce.total) abaixo da Recomendação.
+    // Sempre dentro do orçamento e maximizado — nunca exibe valor acima do teto.
     const totalIaCard  = document.getElementById('total-ia-card');
     const totalIaValor = document.getElementById('total-ia-valor');
     if (totalIaCard && totalIaValor) {
-        const totalIA = parseFloat(sessionStorage.getItem('pcBuilderTotalIA') || '0');
-        totalIaValor.textContent = fmt(totalIA || totalBR);
+        const totalFinal = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
+        totalIaValor.textContent = fmt(totalFinal || totalBR);
         totalIaCard.style.display = 'block';
     }
 

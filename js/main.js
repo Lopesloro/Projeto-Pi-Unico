@@ -96,23 +96,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // ── Enforcer: garante que a build caiba no orçamento e o maximize ──
             const enforce = aplicarLimiteOrcamento(ids, estoque, limiteNum);
 
-            // ── HTML sempre da IA — sem banner de ajuste ────────────────────
-            // Os IDs originais da IA são preservados para gargalo e tabela de preços.
-            // O painel de orçamento exibe o total do enforcer (build corrigida).
-            // Não há mais banner amarelo — o painel de orçamento já comunica o status.
-
-            // Persiste tudo no sessionStorage para a página de resultado
+            // ── Persiste a build final (enforce.ids) no sessionStorage ─────────
+            // enforce.ids é sempre a build final: dentro do orçamento e maximizada.
+            // Gargalo e tabela de preços usam esses IDs — nunca peças acima do teto.
+            // O HTML da IA (seção 1) descreve a recomendação original; o painel de
+            // orçamento indica se houve ajuste.
             sessionStorage.setItem('pcBuilderResposta',    html);
-            // IDs originais da IA — usados pelo gargalo e comparativo de preços
-            sessionStorage.setItem('pcBuilderIds',         JSON.stringify(ids));
-            // Total real das peças DA IA (para o card "Total da Build" e tabela de preços)
-            sessionStorage.setItem('pcBuilderTotalIA',     String(totalReal));
-            // Total do enforcer (para o painel de orçamento — pode diferir se a IA extrapolou)
-            sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
+            sessionStorage.setItem('pcBuilderIds',         JSON.stringify(enforce.ids));
             sessionStorage.setItem('pcBuilderOrcamento',   orcamento);
             sessionStorage.setItem('pcBuilderObjetivo',    textoObjetivo);
             sessionStorage.setItem('pcBuilderAjustado',    enforce.ajustado ? '1' : '0');
             sessionStorage.setItem('pcBuilderEnforceMsg',  enforce.mensagem || '');
+            sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
             sessionStorage.setItem('pcBuilderRaciocinio',  raciocinio || '');
 
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
