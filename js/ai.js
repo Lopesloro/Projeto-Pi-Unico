@@ -36,13 +36,22 @@ function _calcularAlocacao(orcamento, tipoBuild) {
  */
 function _filtrarEstoquePorOrcamento(estoque, orcamento) {
     const b = Number(orcamento);
+
+    // Caps alinhados às alocações reais — impedem que a IA escolha peças que
+    // individualmente parecem caber mas, somadas, explodem o orçamento.
+    //
+    // Raciocínio por categoria (build games como referência):
+    //   GPU  50% + CPU 22% = 72%  → sobram 28% para mobo+RAM+storage+PSU (mínimo viável ~25%)
+    //   Cap CPU 28% dá margem de +6pp sobre a alocação sem comprometer as demais peças.
+    //   Cap GPU 50% = exatamente a alocação de games (maior uso de GPU).
+    //   Demais categorias mantidas conservadoras para não cortar opções viáveis.
     const CAPS = {
-        processadores: 0.40,
-        placas_video:  0.58,
-        placas_mae:    0.18,
-        memorias:      0.14,
-        armazenamento: 0.14,
-        fontes:        0.14,
+        processadores: 0.28,   // games 22% / edição-geral 30% → cap 28% cobre games com margem
+        placas_video:  0.50,   // games 50% → cap exato; edição usa menos, AI é guiada pelo prompt
+        placas_mae:    0.15,
+        memorias:      0.12,
+        armazenamento: 0.12,
+        fontes:        0.12,
     };
 
     const filtrado = {};
