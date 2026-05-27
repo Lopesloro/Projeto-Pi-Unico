@@ -286,44 +286,22 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         }
     }
 
-    // ── FASE 2: Downsize da fonte se superdimensionada → libera budget ──────────
-    // Se fonte.potencia_w > tdp_total × 1.5, troca pela menor fonte adequada
-    // e o surplus liberado é usado nos upgrades de GPU/CPU/RAM/storage.
-    const cpu   = _resolverPeca(estoque, 'cpu',  ids.cpu);
-    const gpu   = _resolverPeca(estoque, 'gpu',  ids.gpu);
-    const fonte = _resolverPeca(estoque, 'fonte', ids.fonte);
-    if (cpu && fonte) {
-        const tdpTotal  = (cpu.tdp_w || 0) + (gpu?.tdp_w || 0);
-        const minFonte  = Math.ceil(tdpTotal * 1.3);
-        if (fonte.potencia_w > tdpTotal * 1.5) {
-            // Procura a menor fonte que ainda atende o TDP mínimo
-            const fonteAdequada = [...(estoque.fontes || [])]
-                .filter(f => f.potencia_w >= minFonte && Number(f.preco) < Number(fonte.preco))
-                .sort((a, b) => (a.preco || 0) - (b.preco || 0))[0];
-            if (fonteAdequada) {
-                const idsTeste = { ...ids, fonte: fonteAdequada.id };
-                if (_compatBuild(idsTeste, estoque)) {
-                    ids.fonte = fonteAdequada.id;
-                    total = _calcularTotal(ids, estoque);
-                }
-            }
-        }
-    }
+    // Fases 2 (PSU downsize) e 3 (upgrade loop) removidas intencionalmente.
+    // O enforcer é exclusivamente um guard de orçamento — só faz downgrade quando necessário.
+    // A IA é responsável por maximizar o uso do budget (Regras 2, 11, 12 do prompt + Fixes A/B).
+    // Qualquer modificação silenciosa aqui causaria mismatch entre a recomendação da IA
+    // e as seções de gargalo / comparativo de preços.
 
-    // ── FASE 3: Upgrade — maximiza uso do orçamento ──────────────────────────
-    const totalAntes = _calcularTotal(ids, estoque);
-    ids   = _maximizarOrcamento(ids, estoque, limite);
-    total = _calcularTotal(ids, estoque);
-
-    const foiUpgradado = total > totalAntes;
-    const foiAjustado  = total !== Number(_calcularTotal(idsOriginais, estoque));
+    const foiAjustado = total !== Number(_calcularTotal(idsOriginais, estoque));
     const pct = ((total / limite) * 100).toFixed(1);
 
     return {
         ids, total,
-        ajustado: foiAjustado || foiUpgradado,
+        ajustado: foiAjustado,
         dentroOrcamento: true,
-        mensagem: `Build otimizada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} utilizados (${pct}% do orçamento).`
+        mensagem: foiAjustado
+            ? `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`
+            : `Build confirmada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`
     };
 }
 
