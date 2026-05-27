@@ -286,42 +286,23 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         }
     }
 
-    // ── FASE 2: Downsize da fonte se superdimensionada → libera budget ──────────
-    // Se a IA escolheu uma fonte maior do que o necessário, troca pela menor adequada
-    // para liberar verba para upgrades de GPU/CPU/RAM/storage.
-    const cpu   = _resolverPeca(estoque, 'cpu',  ids.cpu);
-    const gpu   = _resolverPeca(estoque, 'gpu',  ids.gpu);
-    const fonte = _resolverPeca(estoque, 'fonte', ids.fonte);
-    if (cpu && fonte) {
-        const tdpTotal = (cpu.tdp_w || 0) + (gpu?.tdp_w || 0);
-        const minFonte = Math.ceil(tdpTotal * 1.3);
-        if (fonte.potencia_w > tdpTotal * 1.5) {
-            const fonteAdequada = [...(estoque.fontes || [])]
-                .filter(f => f.potencia_w >= minFonte && Number(f.preco) < Number(fonte.preco))
-                .sort((a, b) => (a.preco || 0) - (b.preco || 0))[0];
-            if (fonteAdequada) {
-                const idsTeste = { ...ids, fonte: fonteAdequada.id };
-                if (_compatBuild(idsTeste, estoque)) {
-                    ids.fonte = fonteAdequada.id;
-                    total = _calcularTotal(ids, estoque);
-                }
-            }
-        }
-    }
+    // ── Fases 2 e 3 removidas ────────────────────────────────────────────────
+    // A IA já recebe um catálogo cujos caps somam ≤ 94% do orçamento.
+    // Isso garante que o total nunca ultrapasse o budget → Fase 1 raramente dispara.
+    // As Fases 2 (PSU downsize) e 3 (upgrade loop) foram removidas porque trocavam
+    // componentes silenciosamente mesmo quando a IA havia acertado tudo,
+    // causando divergência entre Seção 1 e Seções 3+4.
 
-    // ── FASE 3: Upgrade — maximiza uso do orçamento ──────────────────────────
-    // Garante que o cliente receba a melhor build possível pelo valor pago.
-    ids   = _maximizarOrcamento(ids, estoque, limite);
-    total = _calcularTotal(ids, estoque);
-
-    const foiAjustado = total !== Number(_calcularTotal(idsOriginais, estoque));
+    const foiAjustado = total !== _calcularTotal(idsOriginais, estoque);
     const pct = ((total / limite) * 100).toFixed(1);
 
     return {
         ids, total,
         ajustado: foiAjustado,
-        dentroOrcamento: true,
-        mensagem: `Build otimizada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} utilizados (${pct}% do orçamento).`
+        dentroOrcamento: total <= limite,
+        mensagem: foiAjustado
+            ? `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}%).`
+            : `Build confirmada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`
     };
 }
 

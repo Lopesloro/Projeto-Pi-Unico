@@ -11,12 +11,15 @@ function _detectarTipoBuild(objetivo) {
 }
 
 // ─── Alocação de orçamento por categoria ────────────────────────────────────
+// IMPORTANTE: a soma de todos os percentuais por tipo DEVE ser ≤ 94%
+// para que, mesmo que a IA escolha o máximo em todas as categorias,
+// o total nunca ultrapasse o orçamento. Antes era 110% (games) → bug.
 function _calcularAlocacao(orcamento, tipoBuild) {
     const b = Number(orcamento);
     const pct = {
-        games:  { gpu: 0.50, cpu: 0.22, mobo: 0.13, ram: 0.10, storage: 0.07, fonte: 0.08 },
-        edicao: { gpu: 0.22, cpu: 0.30, mobo: 0.12, ram: 0.18, storage: 0.10, fonte: 0.08 },
-        geral:  { gpu: 0.00, cpu: 0.30, mobo: 0.15, ram: 0.12, storage: 0.10, fonte: 0.08 },
+        games:  { gpu: 0.40, cpu: 0.18, mobo: 0.11, ram: 0.09, storage: 0.08, fonte: 0.08 }, // soma: 94%
+        edicao: { gpu: 0.18, cpu: 0.30, mobo: 0.12, ram: 0.15, storage: 0.09, fonte: 0.08 }, // soma: 92%
+        geral:  { gpu: 0.00, cpu: 0.34, mobo: 0.18, ram: 0.17, storage: 0.15, fonte: 0.10 }, // soma: 94%
     }[tipoBuild];
 
     return {
@@ -30,42 +33,46 @@ function _calcularAlocacao(orcamento, tipoBuild) {
 }
 
 /**
- * Fix B — Filtra o catálogo para mostrar apenas peças acessíveis ao orçamento.
- * Caps por categoria: GPU 58%, CPU 40%, Mobo 18%, RAM 14%, Storage 14%, PSU 14%.
- * Fallback: se restar < 3 itens, exibe os 3 mais baratos da categoria.
+ * Fix B (v2) — Filtra o catálogo usando os MESMOS percentuais de _calcularAlocacao().
+ * Como esses percentuais somam ≤ 94%, mesmo que a IA escolha o máximo em todas as
+ * categorias, o total nunca pode ultrapassar 94% do orçamento → Fase 1 do enforcer
+ * nunca dispara → seções 1, 3 e 4 sempre mostram as mesmas peças.
+ *
+ * Para build 'geral' (sem GPU), placas_video retorna array vazio SEM fallback.
+ * Fallback de 3 mais baratos aplica-se apenas a categorias não-nulas.
  */
-function _filtrarEstoquePorOrcamento(estoque, orcamento) {
-    const b = Number(orcamento);
+function _filtrarEstoquePorOrcamento(estoque, orcamento, tipoBuild) {
+    const b    = Number(orcamento);
+    const tipo = tipoBuild || 'geral';
+    const aloc = _calcularAlocacao(b, tipo); // percentuais já somam ≤ 94%
 
-    // Caps alinhados às alocações reais — impedem que a IA escolha peças que
-    // individualmente parecem caber mas, somadas, explodem o orçamento.
-    //
-    // Raciocínio por categoria (build games como referência):
-    //   GPU  50% + CPU 22% = 72%  → sobram 28% para mobo+RAM+storage+PSU (mínimo viável ~25%)
-    //   Cap CPU 28% dá margem de +6pp sobre a alocação sem comprometer as demais peças.
-    //   Cap GPU 50% = exatamente a alocação de games (maior uso de GPU).
-    //   Demais categorias mantidas conservadoras para não cortar opções viáveis.
-    const CAPS = {
-        processadores: 0.28,   // games 22% / edição-geral 30% → cap 28% cobre games com margem
-        placas_video:  0.50,   // games 50% → cap exato; edição usa menos, AI é guiada pelo prompt
-        placas_mae:    0.15,
-        memorias:      0.12,
-        armazenamento: 0.12,
-        fontes:        0.12,
+    // Mapeia nome do campo JSON → chave da alocação
+    const MAP_CAMPO = {
+        processadores: 'cpu',
+        placas_mae:    'mobo',
+        memorias:      'ram',
+        placas_video:  'gpu',
+        armazenamento: 'storage',
+        fontes:        'fonte',
     };
 
     const filtrado = {};
     for (const [campo, items] of Object.entries(estoque)) {
-        const cap = CAPS[campo];
-        if (!cap || !Array.isArray(items)) { filtrado[campo] = items; continue; }
+        const alocKey = MAP_CAMPO[campo];
+        const maxR    = alocKey != null ? aloc[alocKey] : null;
 
-        const dentroLimite = items.filter(p => Number(p.preco) <= b * cap);
+        // GPU = 0 para build 'geral' → array vazio, sem fallback
+        if (maxR === 0) { filtrado[campo] = []; continue; }
 
-        // Fallback: sempre exibe pelo menos 3 opções (as mais baratas)
+        if (maxR == null || !Array.isArray(items)) { filtrado[campo] = items; continue; }
+
+        const dentroLimite = items.filter(p => Number(p.preco) <= maxR);
+
+        // Fallback: exibe pelo menos 3 opções (as mais baratas) quando poucas cabem no cap
         if (dentroLimite.length >= 3) {
             filtrado[campo] = dentroLimite;
         } else {
-            const ordenados = [...items].sort((a, b) => Number(a.preco) - Number(b.preco));
+            const ordenados = [...items].sort((a, b2) => Number(a.preco) - Number(b2.preco));
             filtrado[campo] = ordenados.slice(0, Math.max(3, dentroLimite.length));
         }
     }
@@ -155,16 +162,18 @@ function _formatarCatalogo(estoque) {
  * Inclui alocação numérica por categoria para evitar que a IA gaste demais em uma peça.
  */
 function _buildPrompt(orcamento, objetivo, estoque) {
-    // Filtra catálogo por orçamento (Fix B) antes de formatar
-    const estoqueFiltrado = _filtrarEstoquePorOrcamento(estoque, orcamento);
+    // Detecta tipo ANTES de filtrar para usar os caps corretos por tipo (Fix B v2)
+    const tipo  = _detectarTipoBuild(objetivo);
+
+    // Filtra catálogo por orçamento usando caps type-aware que somam ≤ 94%
+    const estoqueFiltrado = _filtrarEstoquePorOrcamento(estoque, orcamento, tipo);
     const catalogo = _formatarCatalogo(estoqueFiltrado);
 
     const orcNum   = Number(orcamento);
-    const minimo95  = (orcNum * 0.95).toFixed(2);
-    const minimo85  = (orcNum * 0.85).toFixed(2);
+    const minimo80 = (orcNum * 0.80).toFixed(2);
+    const minimo75 = (orcNum * 0.75).toFixed(2);
 
     // Fix A: calcula alocação numérica por categoria
-    const tipo  = _detectarTipoBuild(objetivo);
     const aloc  = _calcularAlocacao(orcamento, tipo);
     const tipoLabel = tipo === 'games' ? 'Games' : tipo === 'edicao' ? 'Edição/Render' : 'Uso Geral';
 
@@ -208,12 +217,12 @@ REGRA 1 — ORÇAMENTO É TETO ABSOLUTO:
 • Total DEVE ser ≤ R$ ${orcamento}. Sem exceções.
 • Calcule o total ANTES de responder e confirme que cabe.
 
-REGRA 2 — USE O MÁXIMO DO ORÇAMENTO (mínimo 92%):
-• Total DEVE ser ≥ R$ ${minimo95} (95% do orçamento).
-• Se não conseguir 95%, o MÍNIMO aceitável é R$ ${minimo85} (85%).
+REGRA 2 — USE O MÁXIMO DO ORÇAMENTO (mínimo 80%):
+• Total DEVE ser ≥ R$ ${minimo80} (80% do orçamento).
+• Se não conseguir 80%, o MÍNIMO aceitável é R$ ${minimo75} (75%).
 • NÃO entregue build barata se houver componentes melhores disponíveis no catálogo.
-• Processo: montou a build → sobrou dinheiro → sobe a peça mais impactante.
-• Repita até o surplus ser menor que R$ 200 ou não haver upgrade possível.
+• Processo: montou a build → sobrou dinheiro → sobe a GPU ou CPU para a melhor opção disponível.
+• Repita até o surplus ser menor que R$ 150 ou não haver upgrade possível.
 
 REGRA 3 — REQUISITOS MÍNIMOS POR RESOLUÇÃO (GAMES):
 • 4K de alta performance → GPU com Score ≥ 8.0 (ex: gpu_rtx3080, gpu_rx6800xt)
@@ -254,8 +263,8 @@ PROCESSO OBRIGATÓRIO (passo a passo)
 8. Escolha Armazenamento (NVMe para games/edição), dentro de R$ ${aloc.storage}
 9. Escolha Fonte: (TDP_CPU + TDP_GPU) × 1.3 → menor fonte que atende, dentro de R$ ${aloc.fonte}
 10. Some os preços MANUALMENTE usando os valores do catálogo → confirme ≤ R$ ${orcamento}
-11. Se total < 92% do orçamento (< R$ ${minimo85}), suba a GPU ou CPU — respeitando os tetos
-12. Confirme: total ≤ R$ ${orcamento} E total ≥ R$ ${minimo85}
+11. Se total < 80% do orçamento (< R$ ${minimo80}), suba a GPU ou CPU para a melhor disponível
+12. Confirme: total ≤ R$ ${orcamento} E total ≥ R$ ${minimo75}
 
 ═══════════════════════════════════════════
 FORMATO (JSON puro — sem markdown, sem texto fora)
