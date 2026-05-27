@@ -280,14 +280,21 @@ FORMATO (JSON puro — sem markdown, sem texto fora)
     "fonte":   "ID_EXATO"
   },
   "total": 0000.00,
-  "economia": 000.00,
-  "html": "<h3>Processador</h3><p><strong>NOME</strong> — JUSTIFICATIVA TÉCNICA (sem mencionar preço)</p><h3>Placa-Mãe</h3><p>...</p><h3>Memória RAM</h3><p>...</p><h3>Placa de Vídeo</h3><p>...</p><h3>Armazenamento</h3><p>...</p><h3>Fonte</h3><p>...</p><p>RESUMO: como esta build atende ao objetivo e por que é a melhor escolha neste orçamento.</p>"
+  "justificativas": {
+    "cpu":     "Por que este processador foi escolhido — foco na função e no objetivo (1-2 frases, SEM citar o nome do produto nem o preço)",
+    "mobo":    "Por que esta placa-mãe (1 frase)",
+    "ram":     "Por que esta memória — capacidade e velocidade (1 frase)",
+    "gpu":     "Por que esta GPU — resolução alvo e desempenho esperado (1-2 frases, SEM citar nome do produto nem preço)",
+    "storage": "Por que este armazenamento — tipo e capacidade (1 frase)",
+    "fonte":   "Por que esta fonte — potência e margem de segurança (1 frase)",
+    "resumo":  "Como esta build atende ao objetivo do cliente e por que é a melhor escolha neste orçamento (2-3 frases)"
+  }
 }
 
-Regras do HTML:
-- Tags permitidas: h3, p, strong, ul, li
-- PROIBIDO mencionar preços, R$, totais — o sistema exibe os valores automaticamente
-- Foco: justificativa TÉCNICA de cada escolha e como as peças se complementam`;
+Regras das justificativas:
+- PROIBIDO citar nomes de produtos (ex: 'RTX 3070', 'Ryzen 5 5600') — o sistema exibe automaticamente
+- PROIBIDO mencionar preços, R$, totais
+- Foco em POR QUÊ a peça foi escolhida: função, desempenho esperado, compatibilidade com o objetivo`;
 }
 
 // ─── Envio para a API ────────────────────────────────────────────────────────
@@ -339,32 +346,14 @@ function parseRespostaIA(texto) {
                 fonte:   c.fonte   || null,
                 storage: c.storage || null,
             };
-            const html       = (parsed.html || '').replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
-            const raciocinio = parsed.raciocinio || '';
-            return { ids, html, raciocinio };
+            const justificativas = parsed.justificativas || {};
+            const raciocinio     = parsed.raciocinio     || '';
+            return { ids, justificativas, raciocinio };
         }
     } catch (_) { /* não é JSON válido */ }
 
-    // Fallback legado
-    console.warn('[AI] Resposta fora do formato JSON. Tentando parse legado...');
-    const idsMatch  = texto.match(/##COMPONENTES##\s*([\s\S]*?)\s*##HTML##/);
-    const htmlMatch = texto.match(/##HTML##\s*([\s\S]*?)\s*##FIM##/);
+    // Fallback legado — resposta fora do formato esperado
+    console.warn('[AI] Resposta fora do formato JSON. Usando fallback mínimo.');
     const ids = { cpu: null, gpu: null, mobo: null, ram: null, fonte: null, storage: null };
-
-    if (idsMatch) {
-        idsMatch[1].trim().split(',').forEach(part => {
-            const sep = part.indexOf(':');
-            if (sep === -1) return;
-            const key   = part.slice(0, sep).trim();
-            const value = part.slice(sep + 1).trim();
-            if (key in ids) ids[key] = (value === 'null' || !value) ? null : value;
-        });
-    }
-
-    let html = htmlMatch
-        ? htmlMatch[1].trim()
-        : texto.replace(/##COMPONENTES##[\s\S]*?##HTML##/g, '').replace(/##FIM##/g, '').trim();
-    html = html.replace(/```html?\s*/gi, '').replace(/```\s*/gi, '').trim();
-
-    return { ids, html, raciocinio: '' };
+    return { ids, justificativas: {}, raciocinio: '' };
 }

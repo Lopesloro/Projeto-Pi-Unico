@@ -2,6 +2,45 @@
 // MAIN.JS - Lógica principal do Builder
 // ============================================
 
+/**
+ * Gera o HTML da Seção 1 a partir dos IDs reais (enforce.ids) + estoque + justificativas da IA.
+ *
+ * RAZÃO DA EXISTÊNCIA: antes o HTML vinha direto da IA, que podia escrever "Ryzen 9 5900X" no
+ * texto mas colocar cpu_ryzen7_5700x no JSON — gerando divergência entre Seção 1 e Seções 3+4.
+ * Agora o nome de cada componente em Seção 1 é o nome do catálogo para aquele ID, garantindo
+ * que as três seções mostrem SEMPRE as mesmas peças.
+ */
+function gerarHtmlDaBuild(ids, estoque, justificativas) {
+    const j = justificativas || {};
+
+    const CATS = [
+        { key: 'cpu',     label: 'Processador',         arr: 'processadores' },
+        { key: 'gpu',     label: 'Placa de Vídeo',      arr: 'placas_video'  },
+        { key: 'mobo',    label: 'Placa-Mãe',           arr: 'placas_mae'    },
+        { key: 'ram',     label: 'Memória RAM',          arr: 'memorias'      },
+        { key: 'storage', label: 'Armazenamento',        arr: 'armazenamento' },
+        { key: 'fonte',   label: 'Fonte de Alimentação', arr: 'fontes'        },
+    ];
+
+    let html = '';
+    for (const cat of CATS) {
+        const id = ids[cat.key];
+        if (!id || id === 'null') continue;                          // GPU opcional: pula se null
+        const item = (estoque[cat.arr] || []).find(p => p.id === id);
+        if (!item) continue;                                         // ID inválido: pula silenciosamente
+
+        const just = (j[cat.key] || '').trim();
+        html += `<h3>${cat.label}</h3>`;
+        html += `<p><strong>${item.nome}</strong>${just ? ` — ${just}` : ''}</p>`;
+    }
+
+    if (j.resumo) html += `<p>${j.resumo}</p>`;
+
+    return html || '<p style="color:#94a3b8;">Recomendação gerada com sucesso.</p>';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const step1          = document.getElementById('step-1');
@@ -74,11 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const respostaIA = await consultarIA(orcamento, textoObjetivo, estoque);
 
-            // Separa IDs dos componentes, HTML de recomendação e raciocínio da IA
-            const { ids, html, raciocinio } = parseRespostaIA(respostaIA);
+            // Extrai IDs, justificativas por componente e raciocínio geral da IA
+            const { ids, justificativas, raciocinio } = parseRespostaIA(respostaIA);
 
-            // ── Fix 2: Verifica o total real ANTES do enforcer ──────────────
-            // A IA pode mentir no campo "total" — calculamos pelos preços reais.
+            // Calcula total real pelos preços do catálogo (ignora o campo "total" da IA que pode estar errado)
             const CAMPOS = {
                 cpu: 'processadores', mobo: 'placas_mae', ram: 'memorias',
                 gpu: 'placas_video', storage: 'armazenamento', fonte: 'fontes'
@@ -93,15 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn(`[AI] Total real R$${totalReal.toFixed(2)} excede orçamento R$${limiteNum} — enforcer irá corrigir.`);
             }
 
-            // ── Enforcer: garante que a build caiba no orçamento e o maximize ──
+            // Enforcer: garante que a build caiba no orçamento (só downgrade, sem upgrades automáticos)
             const enforce = aplicarLimiteOrcamento(ids, estoque, limiteNum);
 
-            // ── Persiste a build final (enforce.ids) no sessionStorage ─────────
-            // enforce.ids é sempre a build final: dentro do orçamento e maximizada.
-            // Gargalo e tabela de preços usam esses IDs — nunca peças acima do teto.
-            // O HTML da IA (seção 1) descreve a recomendação original; o painel de
-            // orçamento indica se houve ajuste.
-            sessionStorage.setItem('pcBuilderResposta',    html);
+            // ── Gera o HTML da Seção 1 a partir dos IDs finais (enforce.ids) ─────
+            // CRÍTICO: o HTML é gerado do MESMO conjunto de IDs que alimenta Seções 3 e 4.
+            // Isso garante que as três seções mostrem sempre as mesmas peças.
+            const htmlGerado = gerarHtmlDaBuild(enforce.ids, estoque, justificativas);
+
+            // Persiste tudo no sessionStorage
+            sessionStorage.setItem('pcBuilderResposta',   htmlGerado);          // HTML gerado dos IDs reais
             sessionStorage.setItem('pcBuilderIds',         JSON.stringify(enforce.ids));
             sessionStorage.setItem('pcBuilderOrcamento',   orcamento);
             sessionStorage.setItem('pcBuilderObjetivo',    textoObjetivo);
