@@ -243,12 +243,12 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         };
     }
 
-    let ids   = { ...idsOriginais };
-    let total = _calcularTotal(ids, estoque);
+    let ids            = { ...idsOriginais };
+    let total          = _calcularTotal(ids, estoque);
+    let foiDowngradado = false; // true SOMENTE quando Fase 1 trocou peças por versões piores
 
     // ── FASE 1: Downgrade se estourou ────────────────────────────────────────
     if (total > limite) {
-        let ajustado   = false;
         const MAX_DOWN = 30;
         let tentativa  = 0;
 
@@ -257,9 +257,9 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
             let trocou = false;
             for (const key of ORDEM_DOWNGRADE) {
                 if (_downgradeComponente(ids, estoque, key)) {
-                    trocou  = true;
-                    ajustado = true;
-                    total   = _calcularTotal(ids, estoque);
+                    trocou         = true;
+                    foiDowngradado = true;
+                    total          = _calcularTotal(ids, estoque);
                     if (total <= limite) break;
                 }
             }
@@ -271,16 +271,22 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
             if (fallback) {
                 ids   = fallback;
                 total = _calcularTotal(ids, estoque);
-                // Mesmo fallback passa pelo upgrade
                 ids   = _maximizarOrcamento(ids, estoque, limite);
                 total = _calcularTotal(ids, estoque);
+                const pctFb = ((total / limite) * 100).toFixed(1);
                 return {
-                    ids, total, ajustado: true, dentroOrcamento: true,
-                    mensagem: `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)}.`
+                    ids, total,
+                    ajustado: true,
+                    catalogoMaximizado: false,
+                    dentroOrcamento: true,
+                    mensagem: `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pctFb}%).`
                 };
             }
             return {
-                ids, total, ajustado: true, dentroOrcamento: false,
+                ids, total,
+                ajustado: true,
+                catalogoMaximizado: false,
+                dentroOrcamento: false,
                 mensagem: `Não foi possível montar uma build dentro de R$ ${limite.toFixed(2)}. Aumente o orçamento.`
             };
         }
@@ -292,20 +298,19 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
     ids   = _maximizarOrcamento(ids, estoque, limite);
     total = _calcularTotal(ids, estoque);
 
-    const foiAjustado = total !== _calcularTotal(idsOriginais, estoque);
-    const pct         = ((total / limite) * 100).toFixed(1);
+    const pct              = ((total / limite) * 100).toFixed(1);
+    const catalogoMaximizado = Number(pct) < 70; // orçamento excede o que o catálogo pode oferecer
 
-    // Avisa quando o orçamento vai além do catálogo disponível
     let mensagem;
-    if (Number(pct) < 70) {
-        mensagem = `Catálogo maximizado: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}%). Selecionamos as melhores peças disponíveis no catálogo atual.`;
-    } else if (foiAjustado) {
-        mensagem = `Build ajustada e maximizada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`;
+    if (catalogoMaximizado) {
+        mensagem = `Melhores peças disponíveis: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento). O catálogo foi totalmente maximizado.`;
+    } else if (foiDowngradado) {
+        mensagem = `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}%).`;
     } else {
         mensagem = `Build confirmada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`;
     }
 
-    return { ids, total, ajustado: foiAjustado, dentroOrcamento: total <= limite, mensagem };
+    return { ids, total, ajustado: foiDowngradado, catalogoMaximizado, dentroOrcamento: total <= limite, mensagem };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

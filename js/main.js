@@ -144,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('pcBuilderIds',         JSON.stringify(enforce.ids));
             sessionStorage.setItem('pcBuilderOrcamento',   orcamento);
             sessionStorage.setItem('pcBuilderObjetivo',    textoObjetivo);
-            sessionStorage.setItem('pcBuilderAjustado',    enforce.ajustado ? '1' : '0');
+            sessionStorage.setItem('pcBuilderAjustado',      enforce.ajustado ? '1' : '0');
+            sessionStorage.setItem('pcBuilderCatalogoMax',  enforce.catalogoMaximizado ? '1' : '0');
             sessionStorage.setItem('pcBuilderEnforceMsg',  enforce.mensagem || '');
             sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
             sessionStorage.setItem('pcBuilderRaciocinio',  raciocinio || '');

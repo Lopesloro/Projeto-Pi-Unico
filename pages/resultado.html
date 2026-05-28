@@ -119,6 +119,11 @@
             background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(99,102,241,0.05));
             border-color: rgba(234,179,8,0.35);
         }
+        .budget-panel.catalogo {
+            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(14,165,233,0.05));
+            border-color: rgba(99,102,241,0.35);
+        }
+        .budget-panel.catalogo .budget-panel-header { color: #a5b4fc; }
         .budget-panel-header {
             display: flex; align-items: center; gap: 0.6rem;
             font-weight: 700; font-size: 0.95rem; color: #f1f5f9;
@@ -310,10 +315,11 @@ if (orcamento) {
 // Lê os dados salvos pelo main.js e exibe ao usuário
 // =============================================
 function renderizarBudgetPanel() {
-    const total    = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
-    const orcNum   = parseFloat(orcamento || '0');
-    const ajustado = sessionStorage.getItem('pcBuilderAjustado') === '1';
-    const msg      = sessionStorage.getItem('pcBuilderEnforceMsg') || '';
+    const total          = parseFloat(sessionStorage.getItem('pcBuilderTotal') || '0');
+    const orcNum         = parseFloat(orcamento || '0');
+    const ajustado       = sessionStorage.getItem('pcBuilderAjustado')    === '1';
+    const catalogoMax    = sessionStorage.getItem('pcBuilderCatalogoMax') === '1';
+    const msg            = sessionStorage.getItem('pcBuilderEnforceMsg') || '';
 
     if (!orcNum || !total) return;
 
@@ -324,12 +330,27 @@ function renderizarBudgetPanel() {
     let panelClass = 'budget-panel';
     let icon       = '✅';
     let titulo     = 'Build dentro do orçamento';
-    if (overBudget)  { panelClass += ' over';     icon = '⚠️'; titulo = 'Atenção: orçamento excedido'; }
-    else if (ajustado) { panelClass += ' adjusted'; icon = '🔄'; titulo = 'Build ajustada automaticamente para caber no orçamento'; }
+    if (overBudget) {
+        panelClass += ' over';
+        icon    = '⚠️';
+        titulo  = 'Atenção: orçamento excedido';
+    } else if (catalogoMax) {
+        panelClass += ' catalogo';
+        icon    = '🏆';
+        titulo  = 'Melhores peças do catálogo selecionadas';
+    } else if (ajustado) {
+        panelClass += ' adjusted';
+        icon    = '🔄';
+        titulo  = 'Build ajustada para caber no orçamento';
+    }
 
     let barClass = 'budget-bar-fill';
-    if (pct >= 100)    barClass += ' over';
+    if (pct >= 100)     barClass += ' over';
     else if (pct >= 90) barClass += ' warn';
+
+    // Terceira célula: "Economia" só faz sentido quando o catálogo não é o limitante
+    const terceiraLabel = catalogoMax ? 'Limite do catálogo' : 'Economia';
+    const terceiraValor = catalogoMax ? fmt(total)           : fmt(economia);
 
     const panel = document.createElement('div');
     panel.className = panelClass;
@@ -347,8 +368,8 @@ function renderizarBudgetPanel() {
                 <span class="budget-cell-value ${overBudget ? 'over' : 'ok'}">${fmt(total)}</span>
             </div>
             <div class="budget-cell">
-                <span class="budget-cell-label">Economia</span>
-                <span class="budget-cell-value ok">${fmt(economia)}</span>
+                <span class="budget-cell-label">${terceiraLabel}</span>
+                <span class="budget-cell-value ok">${terceiraValor}</span>
             </div>
         </div>
         <div class="budget-bar-bg">
@@ -376,10 +397,12 @@ if (respostaHTML) {
         .replace(/## (.*?)(\n|$)/g,  '<h3>$1</h3>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-    // Exibe o raciocínio da IA apenas quando o enforcer NÃO fez trocas significativas
-    // (quando ajustado=1, o raciocínio descreve uma build diferente da entregue — confunde o usuário)
-    const foiAjustado = sessionStorage.getItem('pcBuilderAjustado') === '1';
-    if (raciocinio && !foiAjustado) {
+    // Exibe o raciocínio da IA quando NÃO houve downgrade forçado.
+    // Quando catalogoMax=true, Phase 3 apenas subiu peças (raciocínio ainda descreve a build).
+    // Quando ajustado=true (downgrade forçado), o raciocínio descreve outra build — não exibe.
+    const foiAjustado   = sessionStorage.getItem('pcBuilderAjustado')    === '1';
+    const isCatalogoMax = sessionStorage.getItem('pcBuilderCatalogoMax') === '1';
+    if (raciocinio && (!foiAjustado || isCatalogoMax)) {
         html = `<div style="
             background: rgba(99,102,241,0.07);
             border: 1px solid rgba(99,102,241,0.2);
