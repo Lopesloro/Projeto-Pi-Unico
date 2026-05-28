@@ -3,10 +3,19 @@
 // ============================================
 
 // ─── Detecta tipo de build ───────────────────────────────────────────────────
-function _detectarTipoBuild(objetivo) {
+/**
+ * Detecta o tipo de build com base no objetivo e no orçamento.
+ * Para orçamentos acima de R$8.000 classificados como "geral", promove
+ * automaticamente para "edicao" — que inclui GPU — porque o catálogo
+ * de builds sem GPU se esgota em ~R$7.500 e um orçamento maior merece GPU.
+ */
+function _detectarTipoBuild(objetivo, orcamento) {
     const obj = (objetivo || '').toLowerCase();
     if (/game|jogo|fps|esport|1080p|1440p|4k/.test(obj)) return 'games';
     if (/edi[cç][aã]o|video|render|premiere|davinci|after.effect/.test(obj)) return 'edicao';
+    // "geral" sem GPU: catálogo máximo ≈ R$7.500
+    // Se orçamento > R$8.000, usa alocação "edicao" para incluir GPU no catálogo
+    if (Number(orcamento) > 8000) return 'edicao';
     return 'geral';
 }
 
@@ -163,7 +172,7 @@ function _formatarCatalogo(estoque) {
  */
 function _buildPrompt(orcamento, objetivo, estoque) {
     // Detecta tipo ANTES de filtrar para usar os caps corretos por tipo (Fix B v2)
-    const tipo  = _detectarTipoBuild(objetivo);
+    const tipo  = _detectarTipoBuild(objetivo, orcamento);
 
     // Filtra catálogo por orçamento usando caps type-aware que somam ≤ 94%
     const estoqueFiltrado = _filtrarEstoquePorOrcamento(estoque, orcamento, tipo);

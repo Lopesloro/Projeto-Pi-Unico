@@ -286,24 +286,26 @@ function aplicarLimiteOrcamento(idsOriginais, estoque, orcamento) {
         }
     }
 
-    // ── Fases 2 e 3 removidas ────────────────────────────────────────────────
-    // A IA já recebe um catálogo cujos caps somam ≤ 94% do orçamento.
-    // Isso garante que o total nunca ultrapasse o budget → Fase 1 raramente dispara.
-    // As Fases 2 (PSU downsize) e 3 (upgrade loop) foram removidas porque trocavam
-    // componentes silenciosamente mesmo quando a IA havia acertado tudo,
-    // causando divergência entre Seção 1 e Seções 3+4.
+    // ── FASE 3: Upgrade — maximiza uso do orçamento ──────────────────────────
+    // Seguro de rodar: o HTML da Seção 1 é gerado de enforce.ids em main.js,
+    // então upgrades aqui são refletidos igualmente em TODAS as seções.
+    ids   = _maximizarOrcamento(ids, estoque, limite);
+    total = _calcularTotal(ids, estoque);
 
     const foiAjustado = total !== _calcularTotal(idsOriginais, estoque);
-    const pct = ((total / limite) * 100).toFixed(1);
+    const pct         = ((total / limite) * 100).toFixed(1);
 
-    return {
-        ids, total,
-        ajustado: foiAjustado,
-        dentroOrcamento: total <= limite,
-        mensagem: foiAjustado
-            ? `Build ajustada para caber no orçamento. Total: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}%).`
-            : `Build confirmada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`
-    };
+    // Avisa quando o orçamento vai além do catálogo disponível
+    let mensagem;
+    if (Number(pct) < 70) {
+        mensagem = `Catálogo maximizado: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}%). Selecionamos as melhores peças disponíveis no catálogo atual.`;
+    } else if (foiAjustado) {
+        mensagem = `Build ajustada e maximizada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`;
+    } else {
+        mensagem = `Build confirmada: R$ ${total.toFixed(2)} de R$ ${limite.toFixed(2)} (${pct}% do orçamento).`;
+    }
+
+    return { ids, total, ajustado: foiAjustado, dentroOrcamento: total <= limite, mensagem };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
