@@ -5,6 +5,7 @@ const cors    = require('cors');
 const path    = require('path');
 const fs      = require('fs');
 const axios   = require('axios');
+const crypto  = require('crypto');
 const { processarBuild } = require('./src/index');
 const { enviarEmail }    = require('./src/modules/email');
 const bcrypt  = require('bcryptjs');
@@ -228,10 +229,20 @@ app.post('/api/login', verificarBanco, async (req, res) => {
 
         if (usuario && bcrypt.compareSync(senha, usuario.Senha)) {
             await pool.query('UPDATE "Usuarios" SET "UltimoLogin" = NOW() WHERE "Id" = $1', [usuario.Id]);
+
+            // Gera token de sessão e salva na tabela Sessoes
+            const token  = crypto.randomBytes(32).toString('hex');
+            const expira = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 dias
+            await pool.query(
+                'INSERT INTO "Sessoes" ("UsuarioId", "Token", "ExpiraEm") VALUES ($1, $2, $3)',
+                [usuario.Id, token, expira]
+            );
+
             res.json({
-                sucesso: true,
+                sucesso:  true,
                 mensagem: 'Login efetuado com sucesso!',
-                usuario: { id: usuario.Id, email: usuario.Email, nome: usuario.Nome }
+                token,
+                usuario:  { id: usuario.Id, email: usuario.Email, nome: usuario.Nome }
             });
         } else {
             res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha inválidos.' });
@@ -305,6 +316,58 @@ async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
         );
     } catch (_) { /* log não crítico */ }
 }
+
+// ============================================
+// ROTA: SALVAR BUILD (chamada pelo frontend após a IA responder)
+// ============================================
+app.post('/api/salvar-build', verificarBanco, async (req, res) => {
+    try {
+        const { emailDestino, objetivo, orcamento, total, componentes } = req.body;
+
+        if (!emailDestino || !objetivo || !orcamento) {
+            return res.status(400).json({ sucesso: false, mensagem: 'Campos obrigatórios: emailDestino, objetivo, orcamento.' });
+        }
+
+        const economia = Math.max(0, Number(orcamento) - Number(total || 0));
+
+        const { rows } = await pool.query(
+            `INSERT INTO "Builds" ("EmailDestino", "Objetivo", "Orcamento", "TotalGasto", "Economia")
+             VALUES ($1, $2, $3, $4, $5) RETURNING "Id"`,
+            [emailDestino, objetivo, Number(orcamento), Number(total) || null, economia]
+        );
+        const buildId = rows[0].Id;
+
+        for (const c of (componentes || [])) {
+            await pool.query(
+                `INSERT INTO "BuildComponentes" ("BuildId", "Componente", "Produto", "Preco", "Loja", "Justificativa")
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [buildId, c.componente || null, c.produto || null,
+                 Number(c.preco) || null, c.loja || null, c.justificativa || null]
+            );
+        }
+
+        res.json({ sucesso: true, buildId });
+    } catch (erro) {
+        console.error('Erro em /api/salvar-build:', erro.message);
+        res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar build.' });
+    }
+});
+
+// ============================================
+// ROTA: LOGOUT (invalida sessão)
+// ============================================
+app.post('/api/logout', verificarBanco, async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (token) {
+            await pool.query('DELETE FROM "Sessoes" WHERE "Token" = $1', [token]);
+        }
+        res.json({ sucesso: true });
+    } catch (erro) {
+        console.error('Erro em /api/logout:', erro.message);
+        res.status(500).json({ sucesso: false });
+    }
+});
 
 // ============================================
 // ROTA: BUILD COMPLETA (scraping + IA + e-mail)

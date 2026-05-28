@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (resposta.ok && dados.sucesso) {
                 localStorage.setItem('usuarioLogado', JSON.stringify(dados.usuario || { email }));
+                if (dados.token) localStorage.setItem('authToken', dados.token);
                 window.location.href = 'pages/builder.html';
             } else {
                 if (msgLogin) msgLogin.textContent = dados.mensagem || 'E-mail ou senha inválidos.';

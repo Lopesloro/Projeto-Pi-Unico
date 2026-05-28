@@ -149,6 +149,47 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('pcBuilderTotal',       String(enforce.total || 0));
             sessionStorage.setItem('pcBuilderRaciocinio',  raciocinio || '');
 
+            // ── Salva a build no banco de dados (fire-and-forget) ─────────────
+            try {
+                const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+                if (usuarioLogado?.email) {
+                    const MAPA_LABEL = {
+                        cpu: 'Processador', gpu: 'Placa de Vídeo', mobo: 'Placa-Mãe',
+                        ram: 'Memória RAM', storage: 'Armazenamento', fonte: 'Fonte de Alimentação'
+                    };
+                    const MAPA_ARR = {
+                        cpu: 'processadores', gpu: 'placas_video', mobo: 'placas_mae',
+                        ram: 'memorias', storage: 'armazenamento', fonte: 'fontes'
+                    };
+                    const componentesParaSalvar = Object.entries(enforce.ids)
+                        .filter(([, id]) => id && id !== 'null')
+                        .map(([key, id]) => {
+                            const item = (estoque[MAPA_ARR[key]] || []).find(p => p.id === id);
+                            return {
+                                componente:    MAPA_LABEL[key] || key,
+                                produto:       item?.nome || id,
+                                preco:         item ? Number(item.preco) : null,
+                                loja:          'Catálogo',
+                                justificativa: (justificativas[key] || '').trim() || null
+                            };
+                        });
+
+                    fetch('/api/salvar-build', {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            emailDestino: usuarioLogado.email,
+                            objetivo:     textoObjetivo,
+                            orcamento:    Number(orcamento),
+                            total:        enforce.total || 0,
+                            componentes:  componentesParaSalvar
+                        })
+                    }).catch(err => console.warn('[DB] Falha ao salvar build:', err.message));
+                }
+            } catch (errDb) {
+                console.warn('[DB] Erro ao preparar dados para salvar build:', errDb.message);
+            }
+
             loadingText.innerText = '✅ Configuração gerada! Redirecionando...';
             loadingText.style.color = '#10b981';
             const spinner = document.querySelector('.spinner');
