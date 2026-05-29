@@ -6,7 +6,6 @@ const path    = require('path');
 const fs      = require('fs');
 const axios   = require('axios');
 const crypto  = require('crypto');
-const { processarBuild } = require('./src/index');
 const { enviarEmail }    = require('./src/modules/email');
 const bcrypt  = require('bcryptjs');
 
@@ -182,13 +181,6 @@ function verificarBanco(req, res, next) {
 }
 
 // ============================================
-// ROTA: STATUS
-// ============================================
-app.get('/api/status', (req, res) => {
-    res.json({ servidor: 'online', banco: pool ? 'conectado' : 'desconectado', timestamp: new Date().toISOString() });
-});
-
-// ============================================
 // ROTA: CADASTRO
 // ============================================
 app.post('/api/cadastro', verificarBanco, async (req, res) => {
@@ -282,42 +274,6 @@ app.get('/api/historico', verificarBanco, async (req, res) => {
 });
 
 // ============================================
-// FUNÇÃO: SALVAR BUILD + LOG DE SCRAPING
-// ============================================
-async function salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada }) {
-    if (!pool || !buildRecomendada) return;
-    try {
-        const { rows } = await pool.query(
-            'INSERT INTO "Builds" ("EmailDestino", "Objetivo", "Orcamento", "TotalGasto", "Economia", "ResumoGeral") VALUES ($1, $2, $3, $4, $5, $6) RETURNING "Id"',
-            [emailDestino, objetivo, orcamento,
-             buildRecomendada.totalGasto || null,
-             buildRecomendada.economia   || null,
-             buildRecomendada.resumoGeral || null]
-        );
-        const buildId = rows[0].Id;
-        for (const c of (buildRecomendada.configuracao || [])) {
-            await pool.query(
-                'INSERT INTO "BuildComponentes" ("BuildId", "Componente", "Produto", "Preco", "Loja", "Url", "Disponivel", "Justificativa") VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-                [buildId, c.componente || null, c.produto || null, c.preco || null,
-                 c.loja || null, c.url || null, c.disponivel !== false, c.justificativa || null]
-            );
-        }
-    } catch (erro) {
-        console.error('Erro ao salvar build:', erro.message);
-    }
-}
-
-async function registrarScrapingLog(componente, loja, sucesso, preco, erro) {
-    if (!pool) return;
-    try {
-        await pool.query(
-            'INSERT INTO "ScrapingLog" ("Componente", "Loja", "Sucesso", "Preco", "Erro") VALUES ($1, $2, $3, $4, $5)',
-            [componente, loja, !!sucesso, preco || null, erro || null]
-        );
-    } catch (_) { /* log não crítico */ }
-}
-
-// ============================================
 // ROTA: SALVAR BUILD (chamada pelo frontend após a IA responder)
 // ============================================
 app.post('/api/salvar-build', verificarBanco, async (req, res) => {
@@ -366,38 +322,6 @@ app.post('/api/logout', verificarBanco, async (req, res) => {
     } catch (erro) {
         console.error('Erro em /api/logout:', erro.message);
         res.status(500).json({ sucesso: false });
-    }
-});
-
-// ============================================
-// ROTA: BUILD COMPLETA (scraping + IA + e-mail)
-// ============================================
-app.post('/api/build', async (req, res) => {
-    try {
-        const { orcamento, objetivo, emailDestino, tipoEmail } = req.body;
-        if (!orcamento || !objetivo || !emailDestino) {
-            return res.status(400).json({ sucesso: false, mensagem: 'Campos obrigatórios: orcamento, objetivo, emailDestino.' });
-        }
-        if (typeof orcamento !== 'number' || orcamento <= 0) {
-            return res.status(400).json({ sucesso: false, mensagem: 'O orçamento deve ser um número positivo.' });
-        }
-
-        const resultado = await processarBuild({ orcamento, objetivo, emailDestino, tipoEmail: tipoEmail || 'lojas-br' });
-
-        if (resultado.buildRecomendada) {
-            await salvarBuild({ emailDestino, objetivo, orcamento, buildRecomendada: resultado.buildRecomendada });
-        }
-
-        if (resultado.statusEtapas?.scraping?.lojas) {
-            for (const [loja, info] of Object.entries(resultado.statusEtapas.scraping.lojas)) {
-                await registrarScrapingLog(objetivo, loja, info.sucesso, info.preco, info.erro);
-            }
-        }
-
-        res.status(resultado.sucesso ? 200 : 207).json(resultado);
-    } catch (erro) {
-        console.error('Erro no endpoint /api/build:', erro.message);
-        res.status(500).json({ sucesso: false, mensagem: 'Erro interno ao processar a build.' });
     }
 });
 
